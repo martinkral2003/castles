@@ -1,0 +1,6 @@
+{
+  "appId": "com.yourname.keepfall",
+  "appName": "Keepfall",
+  "webDir": "www",
+  "android": { "backgroundColor": "#dfe6d6" }
+}
