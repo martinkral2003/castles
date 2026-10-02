@@ -1,12 +1,13 @@
-// ===== Keepfall UI + networking =====
+// ===== Brimfall UI + networking =====
 const $=s=>document.querySelector(s);
 const TEAMS=['Solo','Team A','Team B','Team C','Team D'];
 const DIFF=['easy','normal','hard'];
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 const clean=s=>String(s||'').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g,'').trim().slice(0,14);
-let myName=clean(store.get('hf-name'))||('Warden'+Math.floor(10+Math.random()*89));
+const kv=(f,d)=>{try{const v=f();return v==null?d:v}catch(e){return d}}; // engine value with a fallback
+let myName=clean(store.get('bf-name'))||('Lord'+Math.floor(10+Math.random()*89));
 $('#name').value=myName;
-$('#name').addEventListener('input',e=>{myName=clean(e.target.value)||'Player';store.set('hf-name',myName);});
+$('#name').addEventListener('input',e=>{myName=clean(e.target.value)||'Player';store.set('bf-name',myName);});
 
 let prevLook=[],terrain=null,pings=[],seen=[],fogData=null,armedAb=-1,stats=null,lastPourSent='';
 let ROOM=null,PHASE='menu',CFG=null,G=null,mySlot=0,paused=false,sel=-1,drag=null,fx=[],prevOwner=[],outShown=false,overShown=false;
@@ -19,57 +20,88 @@ function overlay(html,binds){const ov=$('#ov');$('#ov-card').innerHTML=html;ov.h
 function closeOv(){$('#ov').hidden=true;}
 let toastT=0;function toast(t,ms=3200){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms);}
 
-$('#b-help').onclick=()=>overlay(`<h3>How to play</h3><div class="help">
-<p><b>Protect your capital.</b> Its flag and troop plaque carry a star. If it falls, you're out. In team games a team loses when every capital has fallen.</p>
-<p><b>Real soldiers.</b> Every troop that leaves a castle is a soldier on the map. Soldiers that meet enemies fight them hand to hand, and bigger groups win. A thin trickle gets picked off, so strike with a solid block.</p>
-<p><b>Move troops.</b> Hold a road next to your castle and soldiers gather in a block outside the gate. Let go and they march together. How many can gather depends on the castle's level. You can also drag outward from the castle. Slide onto the far castle before letting go to lock a steady route instead, and quick-tap that road to stop it. Routes into your own castles pause while that castle is full, so no soldiers are wasted. A quick tap sends a small squad.</p>
-<p><b>Unit types.</b> Every castle trains free militia. A Barracks lets it train spearmen (2 gold each) and Stables knights (5 gold each); pick what it trains in the castle panel. Spearmen beat knights, knights crush militia, and both outclass militia. The Send chips choose which types march out.</p>
-<p><b>Hiring.</b> Any castle can hire 10 soldiers for gold (spearmen where there's a Mercenary Camp). Each hire costs more than the last, and prices ease back over time.</p>
-<p><b>Veterans.</b> Soldiers who kill enemies rank up (gold chevrons), gaining health and damage. Ranks are remembered when they return to a castle.</p>
-<p><b>Take castles.</b> Soldiers at an enemy castle attack the walls while the garrison shoots back. Owned castles defend 35% better, more with Moat walls, on hills, or at a capital. The castle falls when its garrison hits zero. Captured castles drop one level, losing buildings that no longer fit.</p>
-<p><b>Trade routes.</b> Two of your Markets linked by an unbroken chain of your own castles earn bonus gold, and longer links pay more. Lose a castle in the chain and the route breaks.</p>
-<p><b>Neutrals.</b> Villages near your capital are easy pickings. Further out they get sturdier, and the heart of the map is held by walled fortresses guarded by watchtowers. Walls shrug off attackers without siege equipment, so you need Siegecraft research or soldiers from a Workshop castle, and Army upgrades help a lot. Fortresses pay rich loot and keep their walls for you. Mines earn plenty of gold. Neutrals heal if you stop attacking them.</p>
-<p><b>Build up.</b> Tap your castle to switch between Recruit (troops) and Tax (nine times the gold, slower growth), raise its level (up to 5, capitals up to 6) and fill its building slots: one per level, four from level 5. At level 3 a castle can take a permanent path: Bastion (much sturdier), Trade city (double gold) or Barracks town (fast, cheap troops). A Mercenary Camp lets you hire soldiers for gold. Your capital's level and Granaries set your army cap. Castles cut off from your capital grow slowly and earn nothing.</p>
-<p><b>Research and abilities.</b> Research runs one project at a time, or pay extra to finish instantly. Army upgrades make a whole unit type 20–35% stronger per tier, which decides most battles. Each branch ends in a powerful capstone tech, and finishing any capstone opens endless Mastery levels. Spells are unlocked in the Arcane research branch, cost gold and need to recharge: Fire Rain scorches every enemy soldier in an area after a short warning, Breach knocks a castle's walls down for 20 seconds, and Scout reveals an area.</p>
-<p><b>Road towers.</b> Build a stone tower on a road from the castle panel. It shoots anyone walking past and shrugs off most blows; a Workshop's soldiers break towers faster.</p>
-<p><b>Fog, night and terrain.</b> You only see near your castles and soldiers, and less at night. Rivers are crossed at bridges and mountain ridges at passes. Castles on hills defend 30% better.</p>
-<p><b>Win</b> by taking every rival capital, or by building a Wonder at your capital (level 3 or higher): five stages of 800 gold, then hold your capital for 4 minutes. Everyone is warned, and attacks on your capital roll the timer back.</p></div>
-<button class="btn primary" data-a="ok">Got it</button>`,{ok:closeOv});
+$('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Bastion','Soul Well','Dark Tower','Hellforge'][i]);
+  const spells=kv(()=>SPELLS.map(s=>s.name).join(', '),'Hellfire, Shatter, Eye of Hell, Frenzy, Plague');
+  overlay(`<h3>How to play</h3><div class="help">
+<p class="lead">Every minion is either a soldier or a soul.</p>
+<section><h4>Keep your Throne</h4><p>Your Throne is the castle under the crowned skull. Lose it and you are out; a team is out when all its Thrones have fallen.</p></section>
+<section><h4>Minions breed free</h4><p>Castles breed minions on their own, up to their capacity and your army cap. Higher levels hold more and breed faster; your Throne's level raises the army cap. Castles cut off from the Throne breed at half speed.</p></section>
+<section><h4>Souls come from sacrifice</h4><p>Souls are your only currency. Nearly all of them come from minions sacrificed at an <b>altar</b>: your Throne or a ${pn(2)}.</p><ul>
+<li><b>Sacrifice</b>: tap an altar to turn up to ${kv(()=>SAC_N,10)} of its minions into souls at once.</li>
+<li><b>Offer</b>: switch a castle from Breed to Offer. It keeps breeding, and its spare minions walk your roads as <span class="soul">pilgrims</span> to the nearest altar. Guard the way: pilgrims can be ambushed.</li>
+<li>${pn(2)}s and soul springs trickle souls on their own; captured castles pay loot.</li></ul></section>
+<section><h4>Spend souls on</h4><ul>
+<li><b>Levels</b>: more room and faster breeding, up to 5 (your Throne up to 6).</li>
+<li><b>Paths</b> at level 3, permanent: ${pn(1)} (walled and far sturdier; not for a Throne), ${pn(2)} (an altar with steady souls), ${pn(3)} (sees far, hires a lord), ${pn(4)} (fast breeding, cheap demons).</li>
+<li><b>Demons</b>: from level 2 a castle trains lesser demons; greater demons need a ${pn(4)} or level 4. <b>Promote</b> turns ${kv(()=>PROMO_N,10)} of a garrison into the next tier at once.</li>
+<li><b>Research</b>: draw three random cards and keep one. Each draw costs more.</li>
+<li><b>Spells</b>: two slots, learned from cards: ${spells}.</li>
+<li><b>Lords</b>: each ${pn(3)} hires one lord, a huge named demon whose aura drives nearby troops. Turn on the Lord chip and he leads your next big block.</li>
+<li><b>Spires</b> on roads burn passing enemies. <b>Summon</b> buys ${kv(()=>SUMMON_N,10)} minions in any castle, dearer each time.</li></ul></section>
+<section><h4>Move your horde</h4><ul>
+<li><b>Hold</b> a road beside your castle: minions gather at the gate. Let go and they march as one block. Dragging outward from the castle works too.</li>
+<li><b>Slide</b> onto the far castle before letting go to lock a route; quick-tap that road to stop it.</li>
+<li><b>Tap</b> a road to send a small squad. The Send chips pick which types march.</li></ul></section>
+<section><h4>Battle</h4><ul>
+<li>Troops fight hand to hand: a solid block beats a trickle.</li>
+<li>Lesser demons hold the line. Greater demons fly, charge, savage minions and smash walls.</li>
+<li>Killers rank up into veterans. Castles defend better than open ground, more on hills.</li>
+<li>A captured castle drops a level and loses its path.</li></ul></section>
+<section><h4>Walls and neutrals</h4><ul>
+<li><b>Hovels</b> near your Throne are easy prey.</li>
+<li><b>Bone fortresses</b> hold the heart of the map: walled, guarded by spires, rich in loot.</li>
+<li>Against walls attackers do a third of their damage unless they bring siege: greater demons, lords, the Siegebreakers card or Shatter.</li>
+<li><b>Soul springs</b> give souls while you hold them. Neutrals heal when left alone.</li></ul></section>
+<section><h4>Fog, night, terrain</h4><p>You only see around your castles and troops, and less under the blood moon. Cross lava at bridges and ridges at passes; the ice of Cocytus can be walked anywhere.</p></section>
+<section><h4>Victory</h4><ul>
+<li><b>Conquest</b>: take every rival Throne.</li>
+<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,700)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
+<button class="btn primary" data-a="ok">Got it</button>`,{ok:closeOv});};
 
 // ---------- campaign ----------
 const MISSIONS=[
- {t:'The first banner',d:'Learn to march, build and conquer against a sleepy neighbour.',mt:0,ms:0,bots:[{d:0,pe:2}],tut:true,delay:150},
- {t:'River crossing',d:'Two rivers, few bridges. Hold the crossings and push through.',mt:1,ms:0,bots:[{d:1,pe:0}]},
- {t:'Lance and pike',d:'Two rivals with very different habits. Spearmen stop knights; knights scatter militia.',mt:0,ms:1,bots:[{d:0,pe:1},{d:1,pe:3}]},
- {t:'The pass',d:'A turtle guards the only ways through the mountains. A Workshop helps crack its towers.',mt:3,ms:1,bots:[{d:2,pe:2}]},
- {t:'Islands of gold',d:'Fight beside an ally across four islands joined by bridges.',mt:2,ms:1,bots:[{d:1,pe:0,t:1},{d:1,pe:1,t:2},{d:1,pe:3,t:2}],you:1},
- {t:'Kingslayer',d:'Three hard warlords. Only one crown will remain.',mt:0,ms:2,bots:[{d:2,pe:1},{d:2,pe:0},{d:2,pe:2}]}];
+ {t:'Fresh from the pit',d:'A newborn lord, a sleepy neighbour and a Throne to keep. Learn to breed, sacrifice and conquer.',mt:0,ms:0,bots:[{d:0,pe:2}],tut:true,delay:180},
+ {t:'Across the Phlegethon',d:'Two rivers of fire and only a few bridges. Hold the crossings, feed your altar and push through.',mt:1,ms:0,bots:[{d:1,pe:0}]},
+ {t:'Wrath and greed',d:'Two rival lords: one hurls everything at you, the other hoards souls. Break the hoarder before its altars outgrow you.',mt:7,ms:1,bots:[{d:0,pe:1},{d:1,pe:3}]},
+ {t:'The bone pass',d:'A turtling lord walls up the passes of the Bone Highlands. Greater demons, lords and Shatter break walls.',mt:3,ms:1,bots:[{d:2,pe:2}]},
+ {t:'Isles of obsidian',d:'Fight beside an allied lord across obsidian islands chained by bridges over the lava sea.',mt:2,ms:1,bots:[{d:1,pe:0,t:1},{d:1,pe:1,t:2},{d:1,pe:3,t:2}],you:1},
+ {t:'The ninth circle',d:'At the frozen bottom of Hell three archdemons hold court. Only one will take the Throne.',mt:6,ms:2,bots:[{d:2,pe:1},{d:2,pe:3},{d:2,pe:2}]}];
 let CAMP=null;
-function campDone(){return +(store.get('hf-camp')||0);}
+function campDone(){return +(store.get('bf-camp')||0);}
+function campMeta(m){const foes=m.bots.filter(b=>!m.you||b.t!==m.you).length,al=m.bots.length-foes,o=$('#mt option[value="'+m.mt+'"]');
+  const parts=[o?o.textContent:'',['Small','Medium','Large','Huge'][m.ms],foes+' rival'+(foes>1?'s':''),al?al+' all'+(al>1?'ies':'y'):''].filter(Boolean);
+  return parts.map((t,i)=>'<span>'+t+(i<parts.length-1?' ·':'')+'</span>').join(' ');}
 function renderCamp(){const box=$('#missions');box.innerHTML='';const done=campDone();
-  MISSIONS.forEach((m,i)=>{const b=document.createElement('button');b.className='mission';b.disabled=i>done;
-    b.innerHTML='<span class="n"></span><span class="t"><b></b><small></small></span><span class="st"></span>';
-    b.querySelector('.n').textContent=i+1;b.querySelector('b').textContent=m.t;b.querySelector('small').textContent=i>done?'Locked. Win the previous mission first.':m.d;b.querySelector('.st').textContent=i<done?'Won ✓':'';
+  MISSIONS.forEach((m,i)=>{const b=document.createElement('button');b.className='mission'+(i<done?' won':'');b.disabled=i>done;
+    b.innerHTML='<span class="n"></span><span class="t"><b></b><small></small><em></em></span><span class="st"></span>';
+    b.querySelector('.n').textContent=i+1;b.querySelector('b').textContent=m.t;b.querySelector('small').textContent=i>done?'Sealed. Win the previous mission first.':m.d;
+    b.querySelector('em').innerHTML=campMeta(m);b.querySelector('.st').textContent=i<done?'Won ✓':'';
     b.onclick=()=>startMission(i);box.appendChild(b);});}
 $('#b-camp').onclick=()=>{leaveNet();renderCamp();show('camp');};
 function startMission(i){const m=MISSIONS[i];leaveNet();DAILY=null;NET.mode='local';
   const slots=[];for(let k=0;k<8;k++)slots.push({k:'x',n:'',t:0,d:1,p:'',pe:0});
   slots[0]={k:'h',n:myName,t:m.you||0,d:1,p:'host',pe:0};m.bots.forEach((b,k)=>{slots[k+1]={k:'b',n:'',t:b.t||0,d:b.d,p:'',pe:b.pe};});
-  CFG={slots,ms:m.ms,sp:1,mt:m.mt,gid:0,fixedSeed:7001+i*131,botDelay:m.delay||0};CAMP={i,tut:!!m.tut,step:0};startGame();
-  setTimeout(()=>overlay(`<h3>${i+1}. </h3><p class="sub" data-md></p><button class="btn primary" data-a="go">To battle</button>`,{go:closeOv}),50);
-  setTimeout(()=>{const hh=$('#ov-card h3');if(hh)hh.textContent=(i+1)+'. '+m.t;const md=$('#ov-card [data-md]');if(md)md.textContent=m.d;},60);}
+  CFG={slots,ms:m.ms,sp:1,mt:m.mt,gid:0,fixedSeed:7001+i*131,botDelay:m.delay||0};CAMP={i,tut:!!m.tut,step:0,t0:0,d0:0,sac:0};startGame();
+  setTimeout(()=>{overlay(`<h3></h3><p class="meta"></p><p class="sub"></p><button class="btn primary" data-a="go">To battle</button>`,{go:closeOv});
+    $('#ov-card h3').textContent=(i+1)+'. '+m.t;$('#ov-card .meta').innerHTML=campMeta(m);$('#ov-card .sub').textContent=m.d;},50);}
 // tutorial steps: text plus the condition that completes each one
+const myDemons=()=>{let n=0;for(const c of G.castles)if(c.owner===mySlot&&c.u)n+=(c.u[1]||0)+(c.u[2]||0);for(const s of G.sol)if(s.o===mySlot&&(s.u===1||s.u===2))n++;return n;};
 const TUT=[
- {h:'Your capital',p:'The castle with the star is your capital. Lose it and you lose. Tap it to open its panel.',ok:()=>sel===G.home[mySlot]},
- {h:'Gather an army',p:'Close the panel. Hold your finger on the road leading out of your castle: soldiers gather at the gate. Let go and they march.',ok:()=>G.sol.some(s=>s.o===mySlot&&s.st===0)},
- {h:'Take a castle',p:'At an enemy or neutral castle your soldiers attack the walls while the garrison shoots back. When the garrison hits zero, it is yours. Take one.',ok:()=>G.castles.filter(c=>c.owner===mySlot).length>=2},
- {h:'Build up',p:'Tap a castle and add a building, raise its level, or switch a safe castle to Tax for gold.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.b.length||c.tax))},
- {h:'Better troops',p:'Militia are weak. Build a Barracks to train spearmen or Stables for knights, then use the Send chips at the bottom to pick who marches. Tap ? to learn the counters.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.b.some(b=>b===1||b===4)||c.build&&[2,5].includes(c.build.k)))},
- {h:'Research',p:'Tap Research and start a project. Army upgrades make every soldier of a type stronger, and Siegecraft breaks walled fortresses, and the Arcane branch unlocks spells. Drilled Militia is a strong first pick.',ok:()=>G.pl[mySlot].res||G.pl[mySlot].cur>=0},
- {h:'Road towers',p:'In a castle panel, build a tower on a road facing the enemy. It shoots anyone walking past.',ok:()=>G.tw.some(t=>t.o===mySlot)},
- {h:'Victory',p:'Gather a big mixed army and take the enemy capital, the castle with the star. Your rival wakes up soon.',ok:()=>false}];
-function tutTick(){const el=$('#tut');if(!CAMP||!CAMP.tut||!G||G.over){if(!el.hidden)el.hidden=true;return;}
-  const st=TUT[CAMP.step];if(!st){el.hidden=true;return;}if(st.ok()){CAMP.step++;tutTick();return;}
+ {h:'Your Throne',p:'The castle under the crowned skull is your Throne. Lose it and you lose. Tap it to open its panel.',ok:()=>sel===G.home[mySlot]},
+ {h:'Gather a horde',p:'Close the panel. Hold your finger on a road leading out of your castle: minions gather at the gate. Let go and they march.',ok:()=>G.sol.some(s=>s.o===mySlot&&s.st===0&&!s.sac)},
+ {h:'Take a castle',p:'At a hovel or an enemy castle your minions fight the garrison. When it hits zero, the castle is yours. Take one.',ok:()=>G.castles.filter(c=>c.owner===mySlot).length>=2},
+ {h:'Feed the altar',p:'Souls come only from sacrifice. Your Throne is an altar: tap it and press Sacrifice to turn minions into souls.',ok:()=>CAMP.sac},
+ {h:'Pilgrims',p:'Tap a castle behind your lines and switch it to Offer. Its spare minions walk to your altar as glowing pilgrims and become souls.',ok:()=>G.castles.some(c=>c.owner===mySlot&&c.off)},
+ {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. At level 3 a castle can take a path, like Soul Well or Hellforge.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
+ {h:'Research',p:'Tap Research, draw three cards and keep one. Each draw costs more. Spell cards fill your two spell slots.',ok:()=>G.pl[mySlot].rn>0},
+ {h:'Stronger demons',p:'Minions are weak. From level 2 a castle trains lesser demons (switch them on under Trains) or promotes 10 of its garrison at once.',ok:()=>myDemons()>=CAMP.d0+3},
+ {h:'Spires',p:'In a castle panel, raise a spire on a road facing the enemy. It burns anyone walking past.',ok:()=>G.tw.some(t=>t.o===mySlot)||G.time-CAMP.t0>90},
+ {h:'Victory',p:'Gather a big army of demons and take the enemy Throne, the castle under the crowned skull. Your rival wakes up soon.',ok:()=>false}];
+function tutTick(){const el=$('#tut');if(!CAMP||!CAMP.tut||!G||G.over||mySlot<0){if(!el.hidden)el.hidden=true;return;}
+  // souls gained while the castle count stays put came from a sacrifice (capture loot arrives with a new castle)
+  const p=G.pl[mySlot],n=G.castles.reduce((a,c)=>a+(c.owner===mySlot),0);if(CAMP.le!=null&&p.earned>CAMP.le+0.01&&n===CAMP.lc)CAMP.sac=1;CAMP.le=p.earned;CAMP.lc=n;
+  const st=TUT[CAMP.step];if(!st){el.hidden=true;return;}let ok=false;try{ok=st.ok();}catch(e){}
+  if(ok){CAMP.step++;CAMP.t0=G.time;CAMP.d0=myDemons();tutTick();return;}
   el.hidden=false;$('#tut-h').textContent=(CAMP.step+1)+'/'+TUT.length+'  '+st.h;$('#tut-p').textContent=st.p;}
 setInterval(tutTick,400);
 $('#tut-skip').onclick=()=>{if(CAMP)CAMP.tut=false;$('#tut').hidden=true;};
@@ -79,7 +111,7 @@ $('#tut-skip').onclick=()=>{if(CAMP)CAMP.tut=false;$('#tut').hidden=true;};
   try{if(window.claude&&typeof claude.use==='function')ROOM=await claude.use('room');}catch(e){ROOM=null;}
   if(ROOM){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Friends in your organization can join from this same page.';
     ROOM.onPeers(renderGameList,()=>{});}
-  else $('#net-note').textContent='Online play turns on when this page is opened in Claude while signed in. Bots are always ready.';
+  else $('#net-note').textContent='Online play turns on when this page runs inside Claude. Bots are always ready.';
 })();
 
 function leaveNet(){
@@ -97,17 +129,17 @@ function mkSlots(online){const s=[];for(let i=0;i<8;i++){
   else if(online)s.push(i<4?{k:'o',n:'',t:0,d:1,p:''}:{k:'x',n:'',t:0,d:1,p:''});
   else s.push(i<4?{k:'b',n:'',t:0,d:1,p:''}:{k:'x',n:'',t:0,d:1,p:''});}
   return s;}
-function botName(i,d){return 'Bot '+(i+1)+' ('+DIFF[d]+')';}
+function botName(i,d){const L=kv(()=>LORD_NAMES,null);return(L&&L.length?L[(L.length*8-1-i)%L.length]:'Bot '+(i+1))+' ('+DIFF[d]+')';}
 function slotLabel(s,i){return s.k==='b'?botName(i,s.d):(s.n||'Player');}
 
-$('#b-local').onclick=()=>{leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,gold:CFG?.gold??30,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+$('#b-local').onclick=()=>{leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
   $('#setup-title').textContent='New game';$('#code-box').hidden=true;renderSetup();show('setup');};
 $('#b-host').onclick=async()=>{
   if(!ROOM)return;leaveNet();
   const code=Array.from({length:4},()=>'ABCDEFGHJKMNPQRSTUVWXYZ'[Math.floor(Math.random()*23)]).join('');
-  try{NET.nr=await ROOM.join('hf-'+code.toLowerCase());}catch(e){toastMenu('Could not open a game room. Try again.');return;}
+  try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){toastMenu('Could not open a game room. Try again.');return;}
   NET.mode='host';NET.code=code;NET.lastSeq={};
-  CFG={wonder:CFG?.wonder??1,gold:CFG?.gold??30,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(true),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+  CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(true),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
   $('#setup-title').textContent='Online lobby';$('#code').textContent=code;$('#code-box').hidden=false;
   NET.unsub.push(NET.nr.onPeers(onHostPeers,()=>{}));
   renderSetup();show('setup');pushState();
@@ -138,7 +170,7 @@ function renderSetup(){
     box.appendChild(row);
   });
   const mt=$('#mt');if(mt){mt.value=String(CFG.mt??-1);mt.onchange=()=>{CFG.mt=+mt.value;pushState();};}
-  document.querySelectorAll('.seg').forEach(seg=>{const k=seg.dataset.opt;seg.querySelectorAll('button').forEach(b=>{
+  document.querySelectorAll('.seg[data-opt]').forEach(seg=>{const k=seg.dataset.opt;seg.querySelectorAll('button').forEach(b=>{
     b.setAttribute('aria-pressed',String(+b.dataset.v===CFG[k]));b.onclick=()=>{CFG[k]=+b.dataset.v;renderSetup();pushState();};});});
   validate();
 }
@@ -157,25 +189,26 @@ function startGame(){
   CFG.slots.forEach(s=>{if(s.k==='o'){s.k='x';s.p='';}});
   CFG.slots[0].n=myName;
   CFG.seed=CFG.fixedSeed||((Math.random()*2**31)>>>0);CFG.gid=(CFG.gid|0)+1;
-  const st=$('#stage');CFG.o=(window.innerWidth>window.innerHeight*1.15)?'l':'p';
-  const [W,H]=worldSize(CFG.o,CFG.ms);CFG.opts={wonder:CFG.wonder??1,gold:CFG.gold??30,fog:CFG.fog??1,neut:CFG.neut??1};
+  CFG.o=(window.innerWidth>window.innerHeight*1.15)?'l':'p';
+  const [W,H]=worldSize(CFG.o,CFG.ms);CFG.opts={wonder:CFG.wonder??1,souls:CFG.souls??40,fog:CFG.fog??1,neut:CFG.neut??1};
   G=newGame({seed:CFG.seed,slots:CFG.slots,W,H,ms:CFG.ms,sp:CFG.sp,mt:CFG.mt??-1,botDelay:CFG.botDelay||0,opts:CFG.opts});
   mySlot=0;beginPlay();
   pushState();
 }
 function beginPlay(){
-  PHASE='play';paused=false;SPEEDX=1;sel=-1;drag=null;fx=[];prevOwner=G.castles.map(c=>c.owner);prevLook=G.castles.map(c=>c.lv*8+c.b.length);outShown=false;overShown=false;closeOv();
-  G.names=castleNames(G.castles.length,G.terrainSeed);terrain=null;SPR.clear();pings=[];armedAb=-1;fogData=null;seen=G.castles.map(()=>null);
+  PHASE='play';paused=false;SPEEDX=1;sel=-1;drag=null;fx=[];prevOwner=G.castles.map(c=>c.owner);prevLook=[];outShown=false;overShown=false;closeOv();
+  G.names=castleNames(G.castles.length,G.terrainSeed);terrain=null;if(typeof SPR!=='undefined'&&SPR.clear)SPR.clear();pings=[];armedAb=-1;fogData=null;seen=G.castles.map(()=>null);
   stats={hist:[],peak:new Array(8).fill(0),taken:new Array(8).fill(0),t:0};gesture=null;pourStop();
   updatePanel();show('game');startSim();resetCam(true);initWeather();resetMix();
   if(NET.mode!=='replay'){$('#s-game').classList.remove('replay');recStart();}
   syncSpeedUi();
-  if(mySlot>=0){setTimeout(()=>toast('Hold a road beside your castle to gather soldiers at the gate. Let go to march.',5000),400);
-    setTimeout(()=>{if(G&&!G.over)toast('Tap your castle to set Tax or Recruit, level it up and add buildings. Guard your capital.',5000);},11000);}
+  if(mySlot>=0){const intro=t=>{if(G&&!G.over&&mySlot>=0&&!(CAMP&&CAMP.tut))toast(t,5000);}; // the tutorial box says it already
+    setTimeout(()=>intro('Hold a road beside your castle to gather minions at the gate. Let go to march.'),400);
+    setTimeout(()=>intro('Tap your Throne to sacrifice minions for souls. Souls buy levels, demons and spells.'),11000);}
 }
 
 // ---------- host networking ----------
-function encodeL(){return{s:CFG.slots.map(s=>[s.k,s.n||'',s.t|0,s.d|0,s.p||'',s.pe|0]),sd:CFG.seed|0,ms:CFG.ms,sp:CFG.sp,mt:CFG.mt??-1,op:CFG.opts||{wonder:CFG.wonder??1,gold:CFG.gold??30,fog:CFG.fog??1,neut:CFG.neut??1},o:CFG.o||'p',gid:CFG.gid|0,st:PHASE};}
+function encodeL(){return{s:CFG.slots.map(s=>[s.k,s.n||'',s.t|0,s.d|0,s.p||'',s.pe|0]),sd:CFG.seed|0,ms:CFG.ms,sp:CFG.sp,mt:CFG.mt??-1,op:CFG.opts||{wonder:CFG.wonder??1,souls:CFG.souls??40,fog:CFG.fog??1,neut:CFG.neut??1},o:CFG.o||'p',gid:CFG.gid|0,st:PHASE};}
 function pushState(){
   if(NET.mode!=='host'||!NET.nr)return;
   const L=encodeL();let g=null;
@@ -227,7 +260,7 @@ async function joinCode(code,spec){
   code=String(code).toUpperCase().replace(/[^A-Z]/g,'');
   if(code.length!==4){$('#join-msg').textContent='Codes are four letters.';return;}
   leaveNet();$('#join-msg').textContent='Joining…';
-  try{NET.nr=await ROOM.join('hf-'+code.toLowerCase());}catch(e){$('#join-msg').textContent='Could not join. Try again.';return;}
+  try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){$('#join-msg').textContent='Could not join. Try again.';return;}
   NET.mode='client';NET.code=code;NET.seq=0;NET.cmds=[];NET.gid=null;NET.hadHost=false;G=null;PHASE='lobby';
   NET.spec=!!spec;NET.nr.presence({r:'c',n:myName,c:[],spec:spec?1:0}).catch(()=>{});
   NET.unsub.push(NET.nr.onPeers(onClientPeers,()=>{}));
@@ -277,9 +310,9 @@ function recFinish(){if(!REC||!REC.frames.length){REC=null;return;}recFrame(NET.
   const r=REC;REC=null;r.win=G.winner;r.dur=G.time;LAST_REPLAY=r;
   // keep a lighter copy on the device: about one frame a second
   const thin={...r,frames:r.frames.filter((f,i)=>i%4===0||i===r.frames.length-1)};
-  for(const step of [1,2,3]){try{const data=step===1?thin:{...thin,frames:thin.frames.filter((f,i)=>i%(step)===0||i===thin.frames.length-1)};store.set('hf-replay',JSON.stringify(data));if(store.get('hf-replay'))break;}catch(e){}}
+  for(const step of [1,2,3]){try{const data=step===1?thin:{...thin,frames:thin.frames.filter((f,i)=>i%(step)===0||i===thin.frames.length-1)};store.set('bf-replay',JSON.stringify(data));if(store.get('bf-replay'))break;}catch(e){}}
   updateReplayBtn();}
-function savedReplay(){if(LAST_REPLAY)return LAST_REPLAY;try{const s=store.get('hf-replay');return s?JSON.parse(s):null;}catch(e){return null;}}
+function savedReplay(){if(LAST_REPLAY)return LAST_REPLAY;try{const s=store.get('bf-replay');return s?JSON.parse(s):null;}catch(e){return null;}}
 function updateReplayBtn(){const b=$('#b-replay');if(b)b.hidden=!savedReplay();}
 function startReplay(rec){
   if(!rec||!rec.frames||!rec.frames.length){toast('No replay saved yet.',1800);return;}
@@ -290,7 +323,7 @@ function startReplay(rec){
   resetCam(true);setCam(G.W/2,G.H/2,1,true);}
 function replayIndex(t){const f=RP.rec.frames;let lo=0,hi=f.length-1;while(lo<hi){const m=(lo+hi+1)>>1;if(f[m][0]<=t)lo=m;else hi=m-1;}return lo;}
 function replayApply(force){const i=replayIndex(RP.t);if(i===RP.i&&!force)return;const scrub=Math.abs(i-RP.i)>1;RP.i=i;
-  G.over=false;decodeInto(G,RP.rec.frames[i][1]);G.over=false;G.csolT=Date.now();if(scrub){prevOwner=G.castles.map(c=>c.owner);prevLook=G.castles.map(c=>c.lv*8+c.b.length);fx=[];}}
+  G.over=false;decodeInto(G,RP.rec.frames[i][1]);G.over=false;G.csolT=Date.now();if(scrub){prevOwner=G.castles.map(c=>c.owner);prevLook=[];fx=[];}}
 function fmtT(t){t=Math.max(0,Math.floor(t));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
 function renderReplayBar(){if(!RP)return;$('#rp-play').textContent=RP.playing?'❚❚':'▶';$('#rp-play').setAttribute('aria-label',RP.playing?'Pause':'Play');$('#rp-speed').textContent=RP.speed+'×';
   const r=$('#rp-range');r.max=String(Math.round(RP.end*10));if(!r.matches(':active'))r.value=String(Math.round(RP.t*10));$('#rp-time').textContent=fmtT(RP.t)+' / '+fmtT(RP.end);}
@@ -310,7 +343,7 @@ $('#b-spd').onclick=()=>{if(NET.mode!=='local')return;SPEEDX=SPEEDX===1?2:1;sync
 // ---------- daily challenge ----------
 let DAILY=null;
 function dailyKey(){const d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
-function dailyBest(){const v=+(store.get('hf-daily-'+dailyKey())||0);return v>0?v:null;}
+function dailyBest(){const v=+(store.get('bf-daily-'+dailyKey())||0);return v>0?v:null;}
 function renderDailyBtn(){const b=$('#b-daily');if(!b)return;const best=dailyBest();b.querySelector('small').textContent=best?'Your best today: '+fmtT(best):'Same map for everyone today';}
 function startDaily(){const key=dailyKey();const R=mkRng(key*2654435761%4294967296);leaveNet();NET.mode='local';
   const slots=[];for(let k=0;k<8;k++)slots.push({k:'x',n:'',t:0,d:1,p:'',pe:0});slots[0]={k:'h',n:myName,t:0,d:1,p:'host',pe:0};
@@ -337,18 +370,19 @@ function winnerName(w){if(!w)return'Nobody';if(w[0]==='T')return TEAMS[+w.slice(
 function showGameOver(){statMetric='hist';
   sel=-1;drag=null;const w=G.winner;const mine=mySlot>=0&&w===teamOf(G,mySlot);
   const title=mySlot<0?'Game over':mine?'Victory':'Defeat';
-  const how=G.winBy==='wonder'?' by building a Wonder':'';
-  const sub=mine?(w&&w[0]==='T'?winnerName(w)+' wins'+how+'.':'The realm is yours'+how+'.'):winnerName(w)+' wins'+how+'.';
+  const how=G.winBy==='wonder'?' by opening the Hellgate':'';
+  let sub=mine?(w&&w[0]==='T'?winnerName(w)+' wins'+how+'.':'The Throne of Hell is yours'+how+'.'):winnerName(w)+' wins'+how+'.';
+  if(mine&&CAMP&&CAMP.i+1>=MISSIONS.length)sub='The campaign is won. All of Hell kneels before you.';
   let btns='';
-  if(DAILY){let note='';if(mine){const best=dailyBest();if(!best||G.time<best){store.set('hf-daily-'+DAILY.key,String(Math.round(G.time)));note=best?'New best today!':'First win today!';}else note='Your best today is '+fmtT(best)+'.';}
+  if(DAILY){let note='';if(mine){const best=dailyBest();if(!best||G.time<best){store.set('bf-daily-'+DAILY.key,String(Math.round(G.time)));note=best?'New best today!':'First win today!';}else note='Your best today is '+fmtT(best)+'.';}
     btns='<p class="sub">'+(mine?'Daily challenge won in '+fmtT(G.time)+'. '+note:'The daily challenge beat you this time.')+'</p><button class="btn primary" data-a="daily">'+(mine?'Play again':'Try again')+'</button><button class="btn" data-a="menu">Menu</button>';renderDailyBtn();}
-  else if(CAMP){if(mine&&campDone()<=CAMP.i)store.set('hf-camp',String(CAMP.i+1));
+  else if(CAMP){if(mine&&campDone()<=CAMP.i)store.set('bf-camp',String(CAMP.i+1));
     btns=(mine&&CAMP.i+1<MISSIONS.length?'<button class="btn primary" data-a="next">Next mission</button>':'')+'<button class="btn'+(mine?'':' primary')+'" data-a="retry">'+(mine?'Replay':'Try again')+'</button><button class="btn" data-a="camp">Campaign</button>';}
   else if(NET.mode==='local')btns='<button class="btn primary" data-a="again">Play again</button><button class="btn" data-a="setup">Change setup</button><button class="btn" data-a="menu">Menu</button>';
   else if(NET.mode==='host')btns='<button class="btn primary" data-a="lobby">Back to lobby</button><button class="btn" data-a="menu">Close game</button>';
   else btns='<p class="sub">The host can start a rematch.</p><button class="btn" data-a="menu">Leave</button>';
   if(LAST_REPLAY)btns='<button class="btn" data-a="replay">Watch replay</button>'+btns;
-  overlay(`<h3>${title}</h3><p class="sub" data-sub></p><div class="seg stattabs"><button data-m="hist">Army</button><button data-m="cas">Castles</button><button data-m="gold">Gold</button><button data-m="kills">Kills</button></div><div class="stats"><canvas id="chart" width="600" height="280"></canvas></div><div class="hl" id="hl"></div>${btns}`,{
+  overlay(`<h3 class="${mySlot<0?'':mine?'win':'lose'}">${title}</h3><p class="sub" data-sub></p><div class="seg stattabs"><button data-m="hist">Army</button><button data-m="cas">Castles</button><button data-m="gold">Souls</button><button data-m="kills">Kills</button></div><div class="stats"><canvas id="chart" width="600" height="280"></canvas></div><div class="hl" id="hl"></div>${btns}`,{
     replay:()=>{closeOv();startReplay(LAST_REPLAY);},daily:()=>{closeOv();startDaily();},
     again:()=>{closeOv();startGame();},
     next:()=>{closeOv();const i=CAMP.i+1;startMission(i);},retry:()=>{closeOv();startMission(CAMP.i);},camp:()=>{stopSim();G=null;PHASE='menu';renderCamp();show('camp');CAMP=null;},
@@ -357,7 +391,7 @@ function showGameOver(){statMetric='hist';
     menu:()=>{leaveNet();PHASE='menu';G=null;show('menu');}});
   $('#ov-card [data-sub]').textContent=sub;drawStats();
 }
-function showOut(){overlay(`<h3>Overrun</h3><p class="sub">Your last castle fell. You can keep watching the battle.</p><button class="btn primary" data-a="watch">Keep watching</button><button class="btn" data-a="menu">Leave</button>`,
+function showOut(){overlay(`<h3 class="lose">Dethroned</h3><p class="sub">Your Throne has fallen. You can keep watching the war.</p><button class="btn primary" data-a="watch">Keep watching</button><button class="btn" data-a="menu">Leave</button>`,
   {watch:closeOv,menu:()=>{if(NET.mode==='host'){closeOv();return;}leaveNet();PHASE='menu';G=null;show('menu');}});
   if(NET.mode==='host')$('#ov-card [data-a="menu"]').textContent='Keep hosting';}
 $('#b-pause').onclick=()=>{

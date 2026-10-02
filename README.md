@@ -1,7 +1,10 @@
-# Keepfall
+# Brimfall
 
-A real-time castle strategy game for phones and browsers. Hold a road to muster an army, march on rival castles,
-research, build, and win by conquest or by finishing a Wonder.
+A real-time conquest game for phones and browsers. You are a demon lord fighting for the thrones of Hell.
+Castles breed minions for free; sacrificing minions at altars is the only source of souls; souls buy everything else.
+Hold a road to muster an army, march on rival castles, draw research cards, hire a lord, and win by conquest or by opening the Hellgate.
+
+(Formerly *Keepfall*, a medieval castle game. The redesign is described in `DESIGN.md`.)
 
 ## Quick start
 ```bash
@@ -12,22 +15,25 @@ Everything runs from one self-contained HTML file. No dependencies are needed to
 
 ## Tests and simulations (Node 18+)
 ```bash
-npm test                 # 8 full bot games across player counts and map types
-npm run sim:balance      # 60 games: economic vs aggressive bots
-npm run sim:research     # value of research for identical bots
-npm run sim:length       # 32 bigger games: length and stalls
+npm test                 # full bot games across player counts and map types, plus focused mechanics checks
+npm run sim:balance      # economic (Harvester) vs aggressive bots
+npm run sim:research     # value of research cards for identical bots
+npm run sim:length       # bigger games: length and stalls
 ```
 
 ## Layout
 | Path | What it is |
 |---|---|
-| `src/core.js` | Game engine: map generation, simulation, soldiers, bots, research, sync encoding |
-| `src/art.js` | Illustrated sprites and terrain, drawn with canvas |
+| `src/core.js` | Game engine: map generation, simulation, soldiers, souls and altars, cards, spells, lords, bots, sync encoding |
+| `src/art.js` | Procedural castle, hovel, spring, spire and Hellgate sprites, terrain builder |
+| `src/units.js` | Procedural unit figures (minions, demons, lords) and corpses |
 | `src/head.js` | Menus, lobby, campaign, daily challenge, replays, online glue |
-| `src/tail.js` | Renderer, input, castle panel, effects, research screen |
-| `src/shell.html` | Page shell and CSS; `/*CORE*/` and `/*UI*/` are replaced by the build |
-| `tests/` | Headless simulations that load `src/core.js` |
+| `src/panel.js` | Commands, castle panel, research cards, spell bar, Send chips |
+| `src/tail.js` | Canvas renderer, effects, fog, HUD, gestures |
+| `src/shell.html`, `src/game.html`, `src/game.css` | Page shell and styles; `/*CORE*/`, `/*UI*/` and the game placeholders are filled by the build |
+| `tests/` | Headless simulations and mechanics checks that load `src/core.js` |
+| `tools/` | Dev helpers: headless screenshots (`shot.cjs`) and a flow smoke test (`smoke.cjs`); both need Playwright |
 | `www/` | Build output used by the Android app (Capacitor) |
 | `docs/` | Build output for GitHub Pages |
 
-See `CLAUDE.md` for the design, mechanics and open work, and `PLAY_STORE.md` for publishing.
+See `DESIGN.md` for the rules and contracts, `CLAUDE.md` for conventions and open work, and `PLAY_STORE.md` for publishing.

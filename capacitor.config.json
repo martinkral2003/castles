@@ -1,6 +1,6 @@
 {
-  "appId": "com.yourname.keepfall",
-  "appName": "Keepfall",
+  "appId": "com.yourname.brimfall",
+  "appName": "Brimfall",
   "webDir": "www",
-  "android": { "backgroundColor": "#dfe6d6" }
+  "android": { "backgroundColor": "#120b0d" }
 }

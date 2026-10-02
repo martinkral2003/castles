@@ -1,7 +1,7 @@
 {
-  "name": "keepfall",
-  "version": "0.19.0",
-  "description": "Keepfall: a real-time castle strategy game for phones and browsers",
+  "name": "brimfall",
+  "version": "0.20.0",
+  "description": "Brimfall: a real-time demon-lord conquest game for phones and browsers",
   "private": true,
   "scripts": {
     "build": "node build.mjs",
