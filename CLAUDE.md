@@ -45,8 +45,9 @@ changing rules, the engine API or the UI structure.
 - Run long sims through `bash -lc` in the background: they take 1-3 minutes.
 
 ## Status and open work
-1. **Balance** (2026-10-03 pass): after the revision-2 rewrite 4-6 player games finish (0-1 of 32 unfinished, median about 12-14 min, a little short of the 15-20 target),
-   Aggressive and Harvester are about even in duels (about 10-15% of duels still stall at 30 min: mutual Hellgate turtling). Cards: check `sim:research` after any card change.
+1. **Balance** (2026-10-03 pass, final defaults): 32 bot games with 4-6 players: 0 unfinished, median about 20 min, about a third end by Hellgate. Harvester vs Aggressive duels split
+   35-37 over 80 games, but about 10% of duels still stall at 30 min (mutual Hellgate turtling). Cards sit in a 59-69% win-rate band (`sim:research`, control 56%); lord, tower and spell cards
+   read lower because bots rarely use those systems. Not replayed by hand: campaign missions and the tutorial (only started by the smoke test). Bots rarely hire lords or build Spawners.
 2. **Multiplayer relay** for builds outside Claude (see Architecture).
 3. **Sound** (portals and stores expect it; none so far).
 4. **Name check**: "Soulfall" was dropped because it is taken (Hell-themed ARPG on Steam by King's Crown Studio, 2025; a 2015 board game; an itch.io title).
