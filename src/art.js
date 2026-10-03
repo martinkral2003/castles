@@ -1,4 +1,4 @@
-// ===== Brimfall illustrated art: castles, hovels, bone fortresses, soul springs, spires, Hellgate, banners, sigil, terrain =====
+// ===== Brimfall illustrated art: castles, castle towers, hovels, bone fortresses, soul springs, Hellgate, banners, sigil, terrain =====
 const ART=0.36;let SK=1.35;
 function shade(h,k){const n=parseInt(h.slice(1),16);const c=[(n>>16)&255,(n>>8)&255,n&255];return`rgb(${c.map(v=>Math.round(k<0?v*(1+k):v+(255-v)*k)).join(',')})`;}
 function hx3(h){if(h.length===4)h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3];const n=parseInt(h.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255];}
@@ -64,7 +64,7 @@ function towerBody(x,px,py,r,h,P,o){o=o||{};const k=.42;gshadow(x,px+r*1.1,py+r*
   return py-h;}
 function teeth(x,px,py,r,n,ht,P,front){const k=.42;for(let i=0;i<n;i++){const a=(i+.5)/n*Math.PI*2;const sa=Math.sin(a);if(front?sa<-.05:sa>=-.05)continue;const ca=Math.cos(a);
   const bx=px+ca*r,by=py+sa*r*k;const lit=.5-ca*.5;x.fillStyle=mixh(P[3],P[0],lit*.9);x.beginPath();x.moveTo(bx-2.2,by);x.lineTo(bx,by-ht);x.lineTo(bx+2.2,by);x.closePath();x.fill();}}
-function spire(x,px,py,r,h,P,o){o=o||{};const k=.42;x.fillStyle=cylG(x,px,r,P);x.beginPath();x.moveTo(px-r,py);x.quadraticCurveTo(px-r*.3,py-h*.4,px,py-h);x.quadraticCurveTo(px+r*.3,py-h*.4,px+r,py);x.ellipse(px,py,r,r*k,0,0,Math.PI,false);x.closePath();x.fill();
+function roofCone(x,px,py,r,h,P,o){o=o||{};const k=.42;x.fillStyle=cylG(x,px,r,P);x.beginPath();x.moveTo(px-r,py);x.quadraticCurveTo(px-r*.3,py-h*.4,px,py-h);x.quadraticCurveTo(px+r*.3,py-h*.4,px+r,py);x.ellipse(px,py,r,r*k,0,0,Math.PI,false);x.closePath();x.fill();
   x.strokeStyle=rgba(o.rim||'#ffd8c0',.55);x.lineWidth=.9;x.beginPath();x.moveTo(px-r*.85,py-1);x.quadraticCurveTo(px-r*.27,py-h*.4,px-.3,py-h+1.5);x.stroke();
   if(o.barbs){for(const u of[.32,.58]){const bx=(1-u)*(1-u)*(px-r)+2*u*(1-u)*(px-r*.3)+u*u*px,by=(1-u)*(1-u)*py+2*u*(1-u)*(py-h*.4)+u*u*(py-h);const d=px-bx,bs=Math.max(2.2,r*.22);
     x.fillStyle=P[1];x.beginPath();x.moveTo(bx+.6,by-bs);x.lineTo(bx-bs*1.9,by+bs*.6);x.lineTo(bx+.6,by+bs*.5);x.closePath();x.fill();
@@ -96,11 +96,6 @@ function drape(x,px,py,w,h,col){const c1=shh(col,-.08),c2=shh(col,-.42);x.fillSt
   x.fillStyle='#1c171d';x.fillRect(px-w/2-1,py-1.2,w+2,2);}
 function brazier(x,px,py,s,G){x.strokeStyle='#1d1a20';x.lineWidth=1.2*s;x.lineCap='round';x.beginPath();x.moveTo(px-3*s,py);x.lineTo(px,py-6*s);x.lineTo(px+3*s,py);x.moveTo(px,py);x.lineTo(px,py-6*s);x.stroke();
   x.fillStyle='#2a2529';x.beginPath();x.moveTo(px-4*s,py-7*s);x.lineTo(px+4*s,py-7*s);x.lineTo(px+2.6*s,py-4.8*s);x.lineTo(px-2.6*s,py-4.8*s);x.closePath();x.fill();flame(x,px,py-6.6*s,2.6*s,G);}
-function altar(x,px,py,s){gshadow(x,px+6*s,py+2*s,18*s,6*s,.5);const w=24*s,d=10*s,h=8*s,f=py,top=py-d-h;
-  x.fillStyle=vg(x,f-h,f,[[0,'#4c4552'],[1,'#26212b']]);x.fillRect(px-w/2,f-h,w,h);x.fillStyle='#5d5664';x.fillRect(px-w/2,top,w,d);x.strokeStyle='rgba(255,240,230,.25)';x.lineWidth=.8;x.strokeRect(px-w/2,top,w,d);
-  x.strokeStyle=GL.soul[1];x.lineWidth=1;x.lineCap='round';for(let i=0;i<3;i++)rune(x,px-w*.3+i*w*.3,f-h*.5,2.2,(i*2+1)%6);
-  x.fillStyle='rgba(120,10,10,.55)';x.beginPath();x.ellipse(px+w*.28,top+d*.6,3*s,1.4*s,0,0,7);x.fill();
-  skull(x,px-w*.36,top+d*.35,1.8*s,BONE[1]);flame(x,px+1*s,top+d*.55,4.2*s,GL.soul);}
 function soulPit(x,px,py,rx,ry,R){eglow(x,px,py,rx*2.2,ry*2.4,GL.soul[2],.35);x.strokeStyle=rgba(GL.soul[1],.7);x.lineWidth=1.1;x.lineCap='round';
   for(let i=0;i<9;i++){const a=R()*Math.PI*2;let cx=px+Math.cos(a)*rx,cy=py+Math.sin(a)*ry;x.beginPath();x.moveTo(cx,cy);for(let k=0;k<3;k++){cx+=Math.cos(a+(R()-.5))*7;cy+=Math.sin(a+(R()-.5))*4.5;x.lineTo(cx,cy);}x.stroke();}
   x.fillStyle='#17131a';ell(x,px,py+1.5,rx+5,ry+3.5);x.fill();const g=x.createRadialGradient(px,py,1,px,py,rx);g.addColorStop(0,GL.soul[0]);g.addColorStop(.3,GL.soul[1]);g.addColorStop(.75,GL.soul[2]);g.addColorStop(1,GL.soul[3]);
@@ -161,10 +156,17 @@ function pyramid(x,px,top,w,d,rh,P,tip){const ax=px,ay=top+d/2-rh;x.fillStyle=P[
   x.fillStyle=P[4];for(const d2 of[-1,1]){x.beginPath();x.moveTo(px+d2*(w/2+3),top+d+1);x.lineTo(px+d2*(w/2+8),top+d-5);x.lineTo(px+d2*(w/2-1),top+d-2);x.closePath();x.fill();}
   if(tip){x.fillStyle=tip;x.beginPath();x.moveTo(ax-1.4,ay+6);x.lineTo(ax,ay-4);x.lineTo(ax+1.4,ay+6);x.closePath();x.fill();}return ay;}
 // ---------- sprites ----------
-function spriteCastle(lv,col,capital,path,neutral){
+// castle towers: a ring of four bone-and-iron towers around the footprint, taller and hotter with each level
+function ringTowers(x,add,c,cy,rx,ry,tl,flags){const h=[0,32,44,56][tl],r=[0,8,9,10][tl],P=ISTONE;
+  for(let k=0;k<4;k++){const a=Math.PI/4+k*Math.PI/2,px=c+Math.cos(a)*rx,py=cy+Math.sin(a)*ry;
+    add(py+.4,()=>{const top=towerBody(x,px,py,r,h,P);teeth(x,px,top,r,7,3+tl,P,false);x.fillStyle=P[3];ell(x,px,top,r-1.5,(r-1.5)*.42);x.fill();
+      if(tl>=2)win(x,px-r*.3,py-h*.5,2.2,5,GL.emb);if(tl>=3)win(x,px-r*.3,py-h*.82,2,4.6,GL.emb);
+      if(tl>=3){const st=roofCone(x,px,top+1,r*.86,15,OBS,{barbs:true,tip:BONE[1]});flame(x,px,st+3,4.2,GL.forge);teeth(x,px,top,r,7,3+tl,P,true);flags.push({x:px,y:st+2,s:.6});}
+      else{flame(x,px,top+1,tl===2?3.4:2.4,GL.emb,tl===2?1:.85);teeth(x,px,top,r,7,3+tl,P,true);if(tl>=2)flags.push({x:px+r*.7,y:top-1,s:.55});}});}}
+function spriteCastle(lv,col,capital,path,neutral,tl){
   const L=Math.min(3,lv),outer=lv>=4,big=lv>=5,throne=lv>=6;const size=outer?620:[0,400,460,520][L];const [cn,x]=mkCanvas(size);const c=size/2,cy=size/2+40;
   const rx=RX[L],ry=RY[L],orx=rx+36,ory=ry+27,FR=outer?orx:rx,FRY=outer?ory:ry;const flags=[],smoke=[],D=[],add=(y,f)=>D.push({y,f});
-  const R=aRng(lv*131+path*17+(capital?7:0)+(neutral?3:0));const bast=path===1,well=path===2,dark=path===3,forge=path===4;
+  const R=aRng(lv*131+path*17+(capital?7:0)+(neutral?3:0));const well=path===1,bast=path===2,dark=path===2,forge=path===3;
   const acc=neutral?'#9a9284':col,G=neutral?GL.pale:well?GL.soul:dark?GL.vio:forge?GL.forge:GL.emb,P=neutral?NSTONE:bast?ISTONE:STONE,O=neutral?NOBS:OBS,tipC=neutral?BONE[2]:BONE[1];
   gshadow(x,c+12,cy+14,FR+40,FRY+30,.6);pad(x,c,cy,FR+8,FRY+6,R,neutral);
   if(bast)rampart(x,c,cy+3,FR+9,FRY+7);
@@ -172,9 +174,8 @@ function spriteCastle(lv,col,capital,path,neutral){
   if(bast)stakes(x,c,cy+3,FR+12,FRY+9,false,BONE,22,24,3.4);
   // keep placement per path
   let kx=c-10,ky=cy-6;if(L>=2&&well){kx=c-18;ky=cy-(L===2?24:30);}else if(dark){kx=c-24;ky=cy-2;}else if(forge){kx=c-26;ky=cy-(L===2?18:24);}
-  if(L>=2&&well){const py=cy+(L===2?20:24),prx=L===2?24:30;soulPit(x,c+6,py,prx,prx*.5,R);add(py,()=>wisps(x,c+6,py,L===2?60:80,5,R));smoke.push({x:c+6,y:py-6});add(py-4,()=>altar(x,c+(L===2?50:58),py-8,1));}
+  if(L>=2&&well){const py=cy+(L===2?20:24),prx=L===2?24:30;soulPit(x,c+6,py,prx,prx*.5,R);add(py,()=>wisps(x,c+6,py,L===2?60:80,5,R));smoke.push({x:c+6,y:py-6});}
   if(L>=2&&forge){lavaPool(x,c+16,cy+(L===2?22:28),20,7);const ay=cy+(L===2?20:26);add(ay,()=>anvil(x,c-14,ay,1,R));}
-  if(capital&&!well){const ax=L===1?c-26:L===2?c-48:c-58,ay=L===1?cy+20:L===2?cy+22:cy+28;add(ay,()=>altar(x,ax,ay,L===1?.8:1));}
   if(L===1){
     palisade(x,c,cy,rx,ry,false);const tx=c+8,ty=cy-8;
     add(ty,()=>{const top=towerBody(x,tx,ty,19,34,P);for(let i=0;i<9;i++){const a=(i+.5)/9*Math.PI*2,sa=Math.sin(a);if(sa>0)continue;}
@@ -189,20 +190,20 @@ function spriteCastle(lv,col,capital,path,neutral){
       if(s===fs){const gx=(s.a.x+s.b.x)/2,gy=(s.a.y+s.b.y)/2;gate(x,gx,gy,16,wh*.78,G,P);x.fillStyle='rgba(0,0,0,0)';drape(x,gx-15,gy-wh+1,7,12,acc);drape(x,gx+15,gy-wh+1,7,12,acc);
         for(const d of[-1,1])brazier(x,gx+d*24,gy+6,.8,G);}});}
     verts.forEach((v,k)=>{const adj=Math.max(segs[k].my,segs[(k+n-1)%n].my);add(adj+.5,()=>{const top=towerBody(x,v.x,v.y,tr,th,P);teeth(x,v.x,top,tr,9,5,P,false);
-      const st=spire(x,v.x,top+1,tr*.88,sh,O,{barbs:L>=3,tip:big?null:tipC});teeth(x,v.x,top,tr,9,5,P,true);win(x,v.x-tr*.3,v.y-th*.45,3,6.5,G);
+      const st=roofCone(x,v.x,top+1,tr*.88,sh,O,{barbs:L>=3,tip:big?null:tipC});teeth(x,v.x,top,tr,9,5,P,true);win(x,v.x-tr*.3,v.y-th*.45,3,6.5,G);
       if(big){flame(x,v.x,st+6,4.2,neutral?GL.pale:GL.emb);}
       if(v.y>cy+5||k===0)flags.push({x:v.x,y:st+(big?-2:1),s:big?1.05:.9});});});
     // keep
     const kw=L===3?62:56,kd=L===3?40:36,kh=(L===3?50:42)+(big?14:0);
     add(ky+kd/2,()=>{const k0=keepBox(x,kx,ky,kw,kd,kh,P,G);drape(x,kx-kw*.27,k0.front-kh+3,9,18,acc);drape(x,kx+kw*.27,k0.front-kh+3,9,18,acc);
       if(throne){const sx=kx,sy=k0.top+kd*.5;const t2=towerBody(x,sx,sy,17,70,P);teeth(x,sx,t2,17,10,6,P,false);for(let i=0;i<3;i++)win(x,sx-5+i*5,sy-22-i*14,2.6,6,G);
-        const st=spire(x,sx,t2+1,15,150,O,{barbs:true,rim:'#ffd0b0'});teeth(x,sx,t2,17,10,6,P,true);flame(x,sx,st+10,7,GL.emb);glow(x,sx,st+4,26,GL.emb[2],.35);
+        const st=roofCone(x,sx,t2+1,15,150,O,{barbs:true,rim:'#ffd0b0'});teeth(x,sx,t2,17,10,6,P,true);flame(x,sx,st+10,7,GL.emb);glow(x,sx,st+4,26,GL.emb[2],.35);
         flags.push({x:sx,y:st-2,s:1.75,cap:true});}
       else{const ay=pyramid(x,kx,k0.top,kw,kd,L===3?44:36,O,tipC);if(big){for(let i=-2;i<=2;i++)flame(x,kx+i*kw*.2,k0.top+kd*.2+Math.abs(i)*3,3.6,GL.emb,.9);}
         flags.push({x:kx,y:ay+1,s:capital?1.7:1.15,cap:!!capital});}});
-    if(L===3&&!well&&!dark&&!forge){const tx=c+40,ty=cy-16;add(ty+.3,()=>{const top=towerBody(x,tx,ty,19,big?104:88,P);teeth(x,tx,top,19,10,6,P,false);const st=spire(x,tx,top+1,17,big?58:46,O,{barbs:true,tip:tipC});teeth(x,tx,top,19,10,6,P,true);
+    if(L===3&&!well&&!dark&&!forge){const tx=c+40,ty=cy-16;add(ty+.3,()=>{const top=towerBody(x,tx,ty,19,big?104:88,P);teeth(x,tx,top,19,10,6,P,false);const st=roofCone(x,tx,top+1,17,big?58:46,O,{barbs:true,tip:tipC});teeth(x,tx,top,19,10,6,P,true);
       win(x,tx-6,ty-30,3.2,7,G);win(x,tx-4,ty-58,3,6.5,G);if(big)flame(x,tx,st+7,5,GL.emb);flags.push({x:tx,y:st+1,s:1});});}
-    if(L>=2&&well){const tx=c+48,ty=cy-30;add(ty,()=>{const top=towerBody(x,tx,ty,14,50,P);const st=spire(x,tx,top+1,13,34,O,{tip:tipC});win(x,tx-4,ty-24,3,6,G);});}
+    if(L>=2&&well){const tx=c+48,ty=cy-30;add(ty,()=>{const top=towerBody(x,tx,ty,14,50,P);const st=roofCone(x,tx,top+1,13,34,O,{tip:tipC});win(x,tx-4,ty-24,3,6,G);});}
     if(dark){const tx=c+38,ty=cy-14;add(ty+.3,()=>{const top=towerBody(x,tx,ty,16,128+(big?20:0),O);x.strokeStyle='rgba(190,150,255,.18)';x.lineWidth=1;for(const d of[-9,-3,4]){x.beginPath();x.moveTo(tx+d,ty-4);x.lineTo(tx+d,top+4);x.stroke();}
       for(let i=0;i<4;i++)win(x,tx-5,ty-22-i*26,2.6,7,GL.vio);x.fillStyle=O[3];ell(x,tx,top,19,8);x.fill();x.strokeStyle=rgba(O[0],.6);x.stroke();
       for(const d of[-1,1]){x.fillStyle=d<0?O[1]:O[3];x.beginPath();x.moveTo(tx+d*16,top+2);x.quadraticCurveTo(tx+d*22,top-16,tx+d*8,top-34);x.quadraticCurveTo(tx+d*14,top-16,tx+d*8,top+1);x.closePath();x.fill();}
@@ -212,9 +213,10 @@ function spriteCastle(lv,col,capital,path,neutral){
       const osegs=ov.map((v,k)=>({a:v,b:ov[(k+1)%no],my:(v.y+ov[(k+1)%no].y)/2}));const fo=osegs.reduce((p,q)=>q.my>p.my?q:p);const owh=16+(bast?6:0);
       for(const s of osegs){add(s.my,()=>{wallSeg(x,s.a,s.b,owh,P,{back:s.my<cy-5,band:bast,tooth:7,th2:bast?8:5,th:4});
         if(s===fo){const gx=(s.a.x+s.b.x)/2,gy=(s.a.y+s.b.y)/2;if(throne)hellmouth(x,gx,gy,30,26);else{gate(x,gx,gy,14,owh*.8,G,P);for(const d of[-1,1])brazier(x,gx+d*20,gy+5,.75,G);}}});}
-      ov.forEach((v,k)=>{const adj=Math.max(osegs[k].my,osegs[(k+no-1)%no].my);add(adj+.5,()=>{const top=towerBody(x,v.x,v.y,10,28+(big?6:0),P);const st=spire(x,v.x,top+1,9,big?30:22,O,{tip:tipC});teeth(x,v.x,top,10,7,4,P,true);
+      ov.forEach((v,k)=>{const adj=Math.max(osegs[k].my,osegs[(k+no-1)%no].my);add(adj+.5,()=>{const top=towerBody(x,v.x,v.y,10,28+(big?6:0),P);const st=roofCone(x,v.x,top+1,9,big?30:22,O,{tip:tipC});teeth(x,v.x,top,10,7,4,P,true);
         if(big&&v.y>cy)flame(x,v.x,st+4,3,GL.emb,.9);if(v.y>cy+ory*.8)flags.push({x:v.x,y:st+1,s:.85});});});}
   }
+  if(tl>0)ringTowers(x,add,c,cy,FR+22,FRY+17,Math.min(3,tl),flags);
   D.sort((p,q)=>p.y-q.y);for(const d of D)d.f();
   if(bast)stakes(x,c,cy+3,FR+12,FRY+9,true,BONE,22,24,3.4);
   const plaque=FRY+(bast?38:30);
@@ -239,11 +241,11 @@ function spriteFortress(nw){const L=3,size=520;const [cn,x]=mkCanvas(size);const
   for(const s of segs)add(s.my,()=>{wallSeg(x,s.a,s.b,wh,P,{back:s.my<cy-5,tooth:7,th2:nw?10:7});
     const dx=s.b.x-s.a.x,dy=s.b.y-s.a.y;if(s.my>cy-5)for(let t=.25;t<.8;t+=.25){skull(x,s.a.x+dx*t,s.a.y+dy*t-wh*.55,2.2,BONE[1],G[2]);}
     if(s===fs){const gx=(s.a.x+s.b.x)/2,gy=(s.a.y+s.b.y)/2;gate(x,gx,gy,18,wh*.75,G,P);skull(x,gx,gy-wh-6,6,BONE[0],G[1]);for(const d of[-1,1])glow(x,gx+d*2.3,gy-wh-5,6,G[2],.6);}});
-  verts.forEach((v,k)=>{const adj=Math.max(segs[k].my,segs[(k+n-1)%n].my);add(adj+.5,()=>{const top=towerBody(x,v.x,v.y,tr,th,P);teeth(x,v.x,top,tr,9,7,P,false);const st=spire(x,v.x,top+1,tr*.85,sh,O,{barbs:true,tip:BONE[0]});teeth(x,v.x,top,tr,9,7,P,true);
+  verts.forEach((v,k)=>{const adj=Math.max(segs[k].my,segs[(k+n-1)%n].my);add(adj+.5,()=>{const top=towerBody(x,v.x,v.y,tr,th,P);teeth(x,v.x,top,tr,9,7,P,false);const st=roofCone(x,v.x,top+1,tr*.85,sh,O,{barbs:true,tip:BONE[0]});teeth(x,v.x,top,tr,9,7,P,true);
     for(const d of[-1,1]){glow(x,v.x-3+d*3,v.y-th*.62,5,G[2],.7);x.fillStyle=G[1];x.beginPath();x.ellipse(v.x-3+d*3,v.y-th*.62,1.7,.9,d*.4,0,7);x.fill();}flags.push({x:v.x,y:st+1,s:.9});});});
   add(cy+14,()=>{const k0=keepBox(x,c-8,cy-6,58,38,52,P,G);const ay=pyramid(x,c-8,k0.top,58,38,46,O,BONE[0]);for(const d of[-1,1])horn(x,c-8+d*26,k0.top+30,2.2,d,BONE[1]);
     skull(x,c-8,k0.front-38,5,BONE[0],G[1]);flags.push({x:c-8,y:ay+1,s:1.1});});
-  add(cy-16.5,()=>{const tx=c+40,ty=cy-16;const top=towerBody(x,tx,ty,18,92,P);teeth(x,tx,top,18,10,7,P,false);const st=spire(x,tx,top+1,16,52,O,{barbs:true,tip:BONE[0]});teeth(x,tx,top,18,10,7,P,true);
+  add(cy-16.5,()=>{const tx=c+40,ty=cy-16;const top=towerBody(x,tx,ty,18,92,P);teeth(x,tx,top,18,10,7,P,false);const st=roofCone(x,tx,top+1,16,52,O,{barbs:true,tip:BONE[0]});teeth(x,tx,top,18,10,7,P,true);
     for(const d of[-1,1]){glow(x,tx-4+d*3.5,ty-60,6,G[2],.8);x.fillStyle=G[1];x.beginPath();x.ellipse(tx-4+d*3.5,ty-60,2,1,d*.4,0,7);x.fill();}flags.push({x:tx,y:st+1,s:1});});
   D.sort((p,q)=>p.y-q.y);for(const d of D)d.f();
   if(nw)stakes(x,c,cy+3,rx+8,ry+6,true,['#e8dcc0','#c8b894','#8a7a5e'],30,18);
@@ -251,7 +253,7 @@ function spriteFortress(nw){const L=3,size=520;const [cn,x]=mkCanvas(size);const
 function crystal(x,px,py,s,G,lean){lean=lean||0;const h=s*3.2,w=s*.75;x.save();x.translate(px,py);x.rotate(lean);glow(x,0,-h*.5,s*2.6,G[2],.35);
   x.fillStyle=G[2];x.beginPath();x.moveTo(-w,0);x.lineTo(-w,-h*.75);x.lineTo(0,-h);x.lineTo(0,0);x.closePath();x.fill();x.fillStyle=G[3];x.beginPath();x.moveTo(0,0);x.lineTo(0,-h);x.lineTo(w,-h*.75);x.lineTo(w,0);x.closePath();x.fill();
   x.fillStyle=G[1];x.beginPath();x.moveTo(-w*.6,-h*.15);x.lineTo(-w*.6,-h*.7);x.lineTo(-w*.15,-h*.85);x.lineTo(-w*.15,-h*.2);x.closePath();x.fill();x.restore();}
-function spriteSpring(col,lv){const size=300;const [cn,x]=mkCanvas(size);const c=size/2,cy=size/2+20;const flags=[],smoke=[],R=aRng(31+lv*7),D=[],add=(y,f)=>D.push({y,f});
+function spriteSpring(col,lv,tl){const size=300;const [cn,x]=mkCanvas(size);const c=size/2,cy=size/2+20;const flags=[],smoke=[],R=aRng(31+lv*7),D=[],add=(y,f)=>D.push({y,f});
   gshadow(x,c+6,cy+8,92,56,.45);const g=x.createRadialGradient(c,cy,10,c,cy,86);g.addColorStop(0,'#3f3a44');g.addColorStop(1,'rgba(40,36,44,0)');x.fillStyle=g;ell(x,c,cy,86,54);x.fill();
   if(col)runeRing(x,c,cy+2,74,52,col,R);
   x.strokeStyle=rgba(GL.soul[1],.55);x.lineWidth=1.2;x.lineCap='round';for(let i=0;i<12;i++){const a=R()*Math.PI*2;let px=c+Math.cos(a)*30,py=cy+Math.sin(a)*18;x.beginPath();x.moveTo(px,py);for(let k=0;k<4;k++){px+=Math.cos(a+(R()-.5)*1.2)*8;py+=Math.sin(a+(R()-.5)*1.2)*5;x.lineTo(px,py);}x.stroke();}
@@ -268,18 +270,19 @@ function spriteSpring(col,lv){const size=300;const [cn,x]=mkCanvas(size);const c
     for(const d of[-1,1]){x.fillStyle='#1c1a1e';x.beginPath();x.arc(kx+d*6,ky,3,0,7);x.fill();}for(let i=0;i<4;i++)crystal(x,kx-7+i*4.5,ky-11,1.6,GL.soul,(i-1.5)*.25);});
   if(lv>=3){const no=6;for(let k=0;k<no;k++){const a=k/no*Math.PI*2+Math.PI/6;const ox=c+Math.cos(a)*64,oy=cy+Math.sin(a)*40;add(oy,()=>{gshadow(x,ox+5,oy+1,9,3,.5);x.fillStyle=hg(x,ox-4,ox+4,[[0,OBS[1]],[.3,OBS[0]],[1,OBS[3]]]);x.beginPath();x.moveTo(ox-4,oy);x.lineTo(ox-2.4,oy-30);x.lineTo(ox,oy-36);x.lineTo(ox+2.4,oy-30);x.lineTo(ox+4,oy);x.closePath();x.fill();
     glow(x,ox,oy-34,9,GL.soul[2],.6);x.fillStyle=GL.soul[0];x.beginPath();x.arc(ox,oy-34,1.6,0,7);x.fill();x.strokeStyle=rgba(GL.soul[1],.8);x.lineWidth=.9;x.beginPath();x.moveTo(ox-1,oy-8);x.lineTo(ox-1,oy-22);x.stroke();});}}
+  if(tl>0)ringTowers(x,add,c,cy,88,56,Math.min(3,tl),flags);
   D.sort((p,q)=>p.y-q.y);for(const d of D)d.f();
   if(col)flags.push({x:c+44,y:cy-14,s:1.2});
   return{cn,size,ox:c,oy:cy,flags,smoke,plaque:72,foot:62,footY:44};}
 const SPR=new Map(),SPRH=new Map();
 function spriteFor(c,col,hi){
-  const neutral=c.owner===NEUTRAL,kind=c.kind||'c',lv=Math.max(1,Math.min(6,c.lv|0||1)),path=c.path|0,cap=c.capital>=0?1:0,nw=c.nw?1:0;
-  const key=kind+'|'+lv+'|'+path+'|'+cap+'|'+nw+'|'+(neutral?'n':col);
+  const neutral=c.owner===NEUTRAL,kind=c.kind||'c',lv=Math.max(1,Math.min(6,c.lv|0||1)),path=c.path|0,cap=c.capital>=0?1:0,nw=c.nw?1:0,tl=neutral&&kind!=='m'?0:Math.min(3,c.tl|0);
+  const key=kind+'|'+lv+'|'+path+'|'+cap+'|'+nw+'|'+tl+'|'+(neutral?'n':col);
   const M=hi?SPRH:SPR;let s=M.get(key);if(s){if(hi){M.delete(key);M.set(key,s);}return s;}
   if(hi){if(M.size>=16)M.delete(M.keys().next().value);}else if(M.size>70)M.clear();
   SK=hi?2.7:1.3;
-  if(kind==='m')s=spriteSpring(neutral?null:col,Math.min(3,lv));else if(kind==='v'&&neutral)s=spriteHovel();else if(kind==='f'&&neutral)s=spriteFortress(nw);
-  else s=spriteCastle(lv,col,cap,path,neutral);
+  if(kind==='m')s=spriteSpring(neutral?null:col,Math.min(3,lv),tl);else if(kind==='v'&&neutral)s=spriteHovel();else if(kind==='f'&&neutral)s=spriteFortress(nw);
+  else s=spriteCastle(lv,col,cap,path,neutral,tl);
   M.set(key,s);return s;}
 function footOf(c){const s=c.kind==='m'?{foot:62,footY:44}:c.kind==='v'&&c.owner===NEUTRAL?{foot:118,footY:70}:{foot:RX[Math.min(3,c.lv)]+14+(c.lv>=4?36:0),footY:RY[Math.min(3,c.lv)]+10+(c.lv>=4?27:0)};return{rx:s.foot*ART,ry:s.footY*ART};}
 // ---------- per-frame pieces (world units) ----------
@@ -297,20 +300,6 @@ function drawSigil(x,cx,cy,r,col){x.fillStyle=col;x.beginPath();x.moveTo(cx-r*.6
   x.fillStyle='rgba(12,6,8,.72)';x.beginPath();x.ellipse(cx-r*.26,cy+r*.1,r*.18,r*.21,0,0,7);x.ellipse(cx+r*.26,cy+r*.1,r*.18,r*.21,0,0,7);x.fill();x.beginPath();x.moveTo(cx,cy+r*.3);x.lineTo(cx-r*.09,cy+r*.46);x.lineTo(cx+r*.09,cy+r*.46);x.closePath();x.fill();
   x.fillRect(cx-r*.17,cy+r*.62,r*.07,r*.3);x.fillRect(cx+r*.1,cy+r*.62,r*.07,r*.3);}
 function drawStar(x,cx,cy,r,col){drawSigil(x,cx,cy,r,col);}
-const TGLOW=new Map();function glowSpr(col){let g=TGLOW.get(col);if(!g){g=document.createElement('canvas');g.width=g.height=64;const q=g.getContext('2d');const gr=q.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,rgba(col,.75));gr.addColorStop(.3,rgba(col,.3));gr.addColorStop(1,rgba(col,0));q.fillStyle=gr;q.fillRect(0,0,64,64);TGLOW.set(col,g);}return g;}
-function drawTower(x,t,col,now,px){const X=t.x,Y=t.y,neu=t.o===NEUTRAL,bld=t.bt>0,fc=neu?GL.pale[1]:col,h=bld?9:18;
-  x.fillStyle='rgba(8,4,6,.4)';x.beginPath();x.ellipse(X+4,Y+1.2,9,3.2,-.12,0,7);x.fill();
-  x.fillStyle='#2a252e';x.beginPath();x.ellipse(X,Y,7,2.8,0,0,7);x.fill();x.fillStyle='#3e3746';x.fillRect(X-6.2,Y-3.2,12.4,3.4);x.fillStyle='#57505f';x.fillRect(X-6.2,Y-3.6,12.4,1);
-  x.fillStyle='#5d5568';x.beginPath();x.moveTo(X-4.3,Y-3.4);x.lineTo(X-2.5,Y-3.4-h);x.lineTo(X,Y-3.4-h);x.lineTo(X,Y-3.4);x.closePath();x.fill();
-  x.fillStyle='#231e29';x.beginPath();x.moveTo(X,Y-3.4);x.lineTo(X,Y-3.4-h);x.lineTo(X+2.5,Y-3.4-h);x.lineTo(X+4.3,Y-3.4);x.closePath();x.fill();
-  x.fillStyle=fc;for(let i=0;i<(bld?1:3);i++)x.fillRect(X-2.4+i*.25,Y-6.5-i*4.6,1.3,2.6);
-  if(bld){x.strokeStyle='#bfae8a';x.lineWidth=Math.max(.5,.8*Math.min(1,px));for(const d of[-5.5,5.5]){x.beginPath();x.moveTo(X+d,Y);x.lineTo(X+d*.8,Y-h-9);x.stroke();}
-    x.beginPath();for(let yy=Y-3;yy>Y-h-9;yy-=4.5){x.moveTo(X-5.4,yy);x.lineTo(X+5.4,yy-1.6);}x.stroke();}
-  else{const ty=Y-3.4-h;x.fillStyle='#1b171e';x.beginPath();x.moveTo(X-4.2,ty-2.6);x.lineTo(X+4.2,ty-2.6);x.lineTo(X+2.6,ty);x.lineTo(X-2.6,ty);x.closePath();x.fill();
-    const fl=Math.sin(now/110+X)*.9,fl2=Math.sin(now/70+Y)*.5;x.drawImage(glowSpr(fc),X-12,ty-16,24,24);
-    x.fillStyle=fc;x.beginPath();x.moveTo(X-3.4,ty-2.4);x.quadraticCurveTo(X-3.6,ty-7,X+fl,ty-11-fl2);x.quadraticCurveTo(X+3.6,ty-7,X+3.4,ty-2.4);x.closePath();x.fill();
-    x.fillStyle=neu?'#ffffff':memo(col+'w',()=>shh(col,.65));x.beginPath();x.moveTo(X-1.8,ty-2.4);x.quadraticCurveTo(X-1.8,ty-5.4,X+fl*.6,ty-7.6-fl2);x.quadraticCurveTo(X+1.8,ty-5.4,X+1.8,ty-2.4);x.closePath();x.fill();}
-  if(t.hp<TOWER_HP*.98){const w=16,f=Math.max(0,t.hp/TOWER_HP);x.fillStyle='rgba(0,0,0,.55)';x.fillRect(X-w/2,Y+4,w,2.6);x.fillStyle=f>.4?'#5cc06a':'#e0574c';x.fillRect(X-w/2+.3,Y+4.3,(w-.6)*f,2);}}
 function drawWonder(x,X,Y,stage,prog,col,now,done){const t=now/1000,hp=[0,9,19,30,30,30][Math.min(5,stage)],w=12,pw=6;
   x.fillStyle='rgba(8,4,6,.4)';x.beginPath();x.ellipse(X+5,Y+1.5,21,5.5,0,0,7);x.fill();
   x.fillStyle='#2a252e';x.beginPath();x.ellipse(X,Y,18,5,0,0,7);x.fill();x.fillStyle='#3d3644';x.fillRect(X-18,Y-3,36,3);x.fillStyle='#4f4758';x.beginPath();x.ellipse(X,Y-3,18,5,0,0,7);x.fill();

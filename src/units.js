@@ -1,7 +1,7 @@
-// ===== Brimfall unit figures (minion, lesser demon, greater demon, lord), pilgrims, corpses =====
+// ===== Brimfall unit figures (minion, lesser demon, greater demon, lord), corpses =====
 // Each figure is painted once per (scale level, type, colour, look) into an outlined sprite strip (8 walk + 6 attack frames,
-// facing right, foot-anchored) and blitted per unit with mirroring. Shadows, the lord's aura and banner, bearer flags and
-// pilgrim soul-wisps are cheap per-frame overlays. Public: drawUnit, drawCorpse, unitTop, warmUnits, SKIN, UNITART.
+// facing right, foot-anchored) and blitted per unit with mirroring. Shadows, the lord's aura and banner, bearer flags
+// are cheap per-frame overlays. Public: drawUnit, drawCorpse, unitTop, warmUnits, SKIN, UNITART.
 const SKIN=[['#7a2c24','#a84a3a','#38120e'],['#3e3638','#686062','#181214'],['#56602f','#848f48','#222a10'],
   ['#8a5826','#bd8644','#3e2208'],['#4c305c','#7a5590','#1e1028'],['#5e2a2e','#8c4448','#260a0e']];
 const UNIT_TOP=[26,32,47,58];
@@ -11,8 +11,8 @@ const UNITART=(()=>{
   const CW=[30,44,64,56],CH=[32,40,58,62],AX=[11,16,34,22],AY=[29,36,56,59];
   const WS=[1,.8,.75,.62],AS=[.72,.45,.55,.42];
   const JIT=[1,.95,1.05,.98,1.03,.97,1.06,.94,1.01,.96,1.04,.99,1.02,.95,1.05,1.07];
-  // look per type and bucket: [skin, horn, weapon, crest, pilgrim]
-  const LOOK=[[[0,0,0],[1,1,1],[2,2,0],[3,3,1],[4,0,0,1],[0,0,2,0,1]],
+  // look per type and bucket: [skin, horn, weapon, crest]
+  const LOOK=[[[0,0,0],[1,1,1],[2,2,0],[3,3,1],[4,0,0,1]],
     [[1,0,0],[0,1,1],[5,2,0],[3,3,1],[4,0,1,1]],
     [[0,0],[1,1],[4,2],[5,0],[0,1,0,1]],[[5,0]]];
   const mk=(w,h)=>{let c;if(typeof document!=='undefined'){c=document.createElement('canvas');c.width=w;c.height=h;}else c=new OffscreenCanvas(w,h);return c;};
@@ -238,7 +238,7 @@ const UNITART=(()=>{
     for(const q of[X1,X2,X3,GX]){q.setTransform(1,0,0,1,0,0);q.globalCompositeOperation='source-over';q.globalAlpha=1;q.clearRect(0,0,w,h);}}
   function shadowOn(x,cx,cy,rx,ry,a){x.save();x.translate(cx,cy);x.scale(1,ry/rx);const g=x.createRadialGradient(0,0,0,0,0,rx);g.addColorStop(0,'rgba(8,2,2,'+a+')');g.addColorStop(.6,'rgba(8,2,2,'+a*.55+')');g.addColorStop(1,'rgba(8,2,2,0)');
     x.fillStyle=g;x.beginPath();x.arc(0,0,rx,0,TAU);x.fill();x.restore();}
-  function look(u,col,b){const T=LOOK[u][b]||LOOK[u][0];return{pc:pal(col),sk:skin(SKIN[T[0]]),horn:T[1]|0,wpn:T[2]|0,crest:!!T[3],pil:!!T[4]};}
+  function look(u,col,b){const T=LOOK[u][b]||LOOK[u][0];return{pc:pal(col),sk:skin(SKIN[T[0]]),horn:T[1]|0,wpn:T[2]|0,crest:!!T[3]};}
   function build(L,u,col,b){const R=LVR[L],P=3,fw=Math.round(CW[u]*R)+P*2,fh=Math.round(CH[u]*R)+P*2,o=look(u,col,b),ax=P+AX[u]*R,ay=P+AY[u]*R;
     const cn=mk(fw*NF,fh),x=cn.getContext('2d'),ol=L<2?1:L<3?1.15:1.7,rim=Math.max(.5,.75*R),gN=Math.max(1,Math.min(NF,Math.floor(1100/fw)));
     const RIM=o.pil?[[rim,rim,'rgba(205,238,255,.62)'],[-rim*.4,-rim*1.1,'rgba(120,200,255,.6)']]:[[rim,rim,'rgba(255,206,160,.42)'],[-rim*.4,-rim*1.1,'rgba(255,92,30,.38)']];
@@ -282,9 +282,9 @@ const UNITART=(()=>{
   const FLAT=[[-2.8,-6.5,.72],[-4.8,-10,.95],[-3.6,-22,1],[-4.6,-20,1.45]];
   function bobOf(u,ph,act){if(act)return 0;if(u===2)return-1.5*Math.cos(ph);const a=[1.1,.9,0,.8][u];return a*(.5+.5*Math.cos(2*ph));}
   const SH=[[6.2,2.1],[8.4,2.8],[9.5,3],[12,3.6]];
-  function unit(x,px,py,k,col,t,dir,u,bearer,act,v,sac){u=u>0&&u<4?u|0:0;v=(v|0)&15;
+  function unit(x,px,py,k,col,t,dir,u,bearer,act,v){u=u>0&&u<4?u|0:0;v=(v|0)&15;
     const m=x.getTransform?x.getTransform():null,sc=(m?Math.hypot(m.a,m.b):2)*k,L=sc<.62?0:sc<1.24?1:sc<2.5?2:3;
-    const pil=!!sac&&!u,b=u===3?0:pil?5:v===15?4:v&3,now=performance.now(),hs=px*.37+py*.71;
+    const b=u===3?0:v===15?4:v&3,now=performance.now(),hs=px*.37+py*.71;
     let f,ph=0,br=1;
     if(act){ph=t*AS[u];f=8+(((ph/TAU*6)%6+6)%6|0);}
     else if(t===0&&u!==2){f=0;br=1+.028*Math.sin(now*.0024+hs);}
@@ -295,8 +295,6 @@ const UNITART=(()=>{
     if(u===3){const pu=.5+.5*Math.sin(now*.004+hs),s=blob('au'+col,MX(RGB(col),[255,120,40],.25),.6);x.globalAlpha=ga*(.6+.25*pu);const rr=(22+pu*3)*kk;x.drawImage(s,px-rr,py-rr*.42,rr*2,rr*.84);
       const e=blob('em',[255,170,80],1);for(let i=0;i<3;i++){const q=((now*.00045+i*.333+hs*.01)%1+1)%1,ex=px+Math.sin(i*2.4+q*5)*9*kk,ey=py-q*34*kk;x.globalAlpha=ga*(1-q)*.9;x.drawImage(e,ex-1.6*kk,ey-1.6*kk,3.2*kk,3.2*kk);}
       x.globalAlpha=ga;}
-    if(pil){const w=blob('wisp',[225,246,255],1);for(let i=0;i<4;i++){const q=((now*.0012+i*.25+hs*.013)%1+1)%1,ex=px-dir*(1+q*15)*kk,ey=py-(13+q*9+Math.sin(now*.006+i*2+hs)*1.8)*kk,sz=(4.6-q*3)*kk;
-        x.globalAlpha=ga*(1-q)*.95;x.drawImage(w,ex-sz,ey-sz,sz*2,sz*2);}x.globalAlpha=ga;}
     const flip=dir<0;let X0=px,Y0=py;
     if(flip){if(m)x.setTransform(-m.a,-m.b,m.c,m.d,m.e+m.a*px+m.c*py,m.f+m.b*px+m.d*py);else{x.save();x.translate(px,py);x.scale(-1,1);}X0=Y0=0;}
     if(bearer||u===3){const fr=flagRow(L,col),fa=FLAT[u],fs=fa[2]*kk,bo=bobOf(u,ph,act),ff=((now*.0085+hs)%6+6)%6|0;
@@ -343,6 +341,6 @@ const UNITART=(()=>{
   function clear(){rows.clear();flags.clear();corpses.clear();pxTot=0;}
   return{unit,corpse,warm,stats,clear,rowFor,CW,CH,AX,AY,LVR};
 })();
-function drawUnit(x,px,py,k,col,t,dir,u,bearer,act,v=0,sac=0){UNITART.unit(x,px,py,k,col,t,dir,u,bearer,act,v,sac);}
+function drawUnit(x,px,py,k,col,t,dir,u,bearer,act,v=0){UNITART.unit(x,px,py,k,col,t,dir,u,bearer,act,v);}
 function drawCorpse(x,px,py,k,col,u,flip){UNITART.corpse(x,px,py,k,col,u,flip);}
 function warmUnits(cols,levels){UNITART.warm(cols,levels);}

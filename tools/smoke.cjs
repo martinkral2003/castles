@@ -45,15 +45,22 @@ const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!o
   await ev(page, () => { sel = -1; updatePanel(); G.pl[mySlot].souls = 600; });
   await page.click('#b-res').catch(() => {}); await page.waitForTimeout(500); await shot(page, '06-research-closed');
   await ev(page, () => { issue(5, 0); }); await page.waitForTimeout(900); await shot(page, '07-research-cards');
-  check(await ev(page, () => Array.isArray(G.pl[mySlot].offer) && G.pl[mySlot].offer.length === 3), 'research draw offers three cards');
+  check(await ev(page, () => Array.isArray(G.pl[mySlot].offer) && G.pl[mySlot].offer.length === 2), 'research draw offers two cards');
   await ev(page, () => { issue(13, 0); }); await page.waitForTimeout(500);
   check(await ev(page, () => G.pl[mySlot].rn === 1 && !G.pl[mySlot].offer), 'picking a card applies it');
   await ev(page, () => { closeOv(); resOpen = false; });
-  // offer mode, sacrifice, promote on a castle
-  const flow = await ev(page, () => { const me = mySlot, c = G.castles[G.home[me]]; const s0 = G.pl[me].souls; c.u[0] = Math.max(c.u[0], 20); c.size = c.u[0] + c.u[1] + c.u[2];
-    const r = sacrifice(G, me, G.home[me]); return { r, gained: Math.round(G.pl[me].souls - s0) }; });
-  check(flow.r && flow.gained > 0, 'sacrifice at the Throne yields souls ' + JSON.stringify(flow));
-  await shot(page, '08-after-sacrifice');
+  // Souls mode, towers and spells on the Throne
+  const flow = await ev(page, () => { const me = mySlot, ci = G.home[me], c = G.castles[ci]; G.pl[me].souls = 900; c.u[0] = Math.max(c.u[0], 20); c.size = c.u[0] + c.u[1] + c.u[2];
+    const m = setMode(G, me, ci, 1), s0 = G.pl[me].souls; for (let i = 0; i < 400; i++) step(G, 0.05); G.events.length = 0; const gained = Math.round(G.pl[me].souls - s0);
+    setMode(G, me, ci, 0); const f = fortify(G, me, ci); for (let i = 0; i < 200; i++) step(G, 0.05); G.events.length = 0;
+    const h = useSpell(G, me, 0), sp = useSpell(G, me, 1, 400, 600), fi = useSpell(G, me, 2, 500, 800); return { m, gained, f, tl: c.tl, h, sp, fi }; });
+  check(flow.m && flow.gained > 0, 'Souls mode yields souls ' + JSON.stringify(flow));
+  check(flow.f && flow.tl === 1, 'fortify raises a tower ring ' + flow.tl);
+  check(flow.h && flow.sp && flow.fi, 'all three spells can be cast from the start');
+  await ev(page, () => { sel = G.home[mySlot]; panelKey = ''; updatePanel(); });
+  await page.waitForTimeout(700); await shot(page, '08-panel-after');
+  await ev(page, () => { sel = -1; updatePanel(); for (let i = 0; i < 60; i++) step(G, 0.05); });
+  await page.waitForTimeout(500); await shot(page, '08b-spells-active');
   await page.close();
 
   // ---- campaign mission 1 with tutorial ----

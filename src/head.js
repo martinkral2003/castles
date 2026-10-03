@@ -20,24 +20,23 @@ function overlay(html,binds){const ov=$('#ov');$('#ov-card').innerHTML=html;ov.h
 function closeOv(){$('#ov').hidden=true;}
 let toastT=0;function toast(t,ms=3200){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms);}
 
-$('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Bastion','Soul Well','Dark Tower','Hellforge'][i]);
-  const spells=kv(()=>SPELLS.map(s=>s.name).join(', '),'Hellfire, Shatter, Eye of Hell, Frenzy, Plague');
+$('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Citadel','Spawner'][i]);
+  const spells=kv(()=>SPELLS.map(s=>s.name).join(', '),'Horde Boost, Spies, Hellfire');
   overlay(`<h3>How to play</h3><div class="help">
-<p class="lead">Every minion is either a soldier or a soul.</p>
+<p class="lead">Castles breed minions. Souls are your only currency, and fighting is the fastest way to earn them.</p>
 <section><h4>Keep your Throne</h4><p>Your Throne is the castle under the crowned skull. Lose it and you are out; a team is out when all its Thrones have fallen.</p></section>
-<section><h4>Minions breed free</h4><p>Castles breed minions on their own, up to their capacity and your army cap. Higher levels hold more and breed faster; your Throne's level raises the army cap. Castles cut off from the Throne breed at half speed.</p></section>
-<section><h4>Souls come from sacrifice</h4><p>Souls are your only currency. Nearly all of them come from minions sacrificed at an <b>altar</b>: your Throne or a ${pn(2)}.</p><ul>
-<li><b>Sacrifice</b>: tap an altar to turn up to ${kv(()=>SAC_N,10)} of its minions into souls at once.</li>
-<li><b>Offer</b>: switch a castle from Breed to Offer. It keeps breeding, and its spare minions walk your roads as <span class="soul">pilgrims</span> to the nearest altar. Guard the way: pilgrims can be ambushed.</li>
-<li>${pn(2)}s and soul springs trickle souls on their own; captured castles pay loot.</li></ul></section>
+<section><h4>Minions breed free</h4><p>Castles breed minions on their own, up to their capacity and your army cap. Both count <b>supply</b>: a minion is ${kv(()=>UNIT[0].sup,1)}, a lesser demon ${kv(()=>UNIT[1].sup,2)}, a greater demon ${kv(()=>UNIT[2].sup,5)}, a lord ${kv(()=>UNIT[3].sup,8)}. Higher levels hold more and breed faster; your Throne's level raises the army cap. Castles cut off from the Throne breed at half speed.</p></section>
+<section><h4>Where souls come from</h4><ul>
+<li><b>Souls mode</b>: switch a castle from Army to Souls. It stops breeding and turns that effort into souls, while its garrison stays and defends. Safe rear castles make the best soul mines.</li>
+<li><b>Kills</b>: every enemy soldier you kill pays a few souls, and the loser gets a little back, so even a lost fight is not wasted. Payouts are capped, so one huge battle cannot decide the game.</li>
+<li><b>Soul springs</b> (placed fairly between rivals and guarded by neutrals) and ${pn(1)}s trickle souls on their own; captured castles pay loot.</li></ul></section>
 <section><h4>Spend souls on</h4><ul>
 <li><b>Levels</b>: more room and faster breeding, up to 5 (your Throne up to 6).</li>
-<li><b>Paths</b> at level 3, permanent: ${pn(1)} (walled and far sturdier; not for a Throne), ${pn(2)} (an altar with steady souls), ${pn(3)} (sees far, hires a lord), ${pn(4)} (fast breeding, cheap demons).</li>
-<li><b>Demons</b>: from level 2 a castle trains lesser demons; greater demons need a ${pn(4)} or level 4. <b>Promote</b> turns ${kv(()=>PROMO_N,10)} of a garrison into the next tier at once.</li>
-<li><b>Research</b>: draw three random cards and keep one. Each draw costs more.</li>
-<li><b>Spells</b>: two slots, learned from cards: ${spells}.</li>
-<li><b>Lords</b>: each ${pn(3)} hires one lord, a huge named demon whose aura drives nearby troops. Turn on the Lord chip and he leads your next big block.</li>
-<li><b>Spires</b> on roads burn passing enemies. <b>Summon</b> buys ${kv(()=>SUMMON_N,10)} minions in any castle, dearer each time.</li></ul></section>
+<li><b>Paths</b> at level 3, permanent: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser demons, and greater demons from level 5).</li>
+<li><b>Towers</b>: one purchase raises a ring of towers round a castle that shoot anything nearby. Upgrade them up to level 3.</li>
+<li><b>Research</b>: draw two random cards and keep one. Each draw costs a little more.</li>
+<li><b>Spells</b>: all three are ready from the start: ${spells}. Cards make them stronger.</li>
+<li><b>Lords</b>: each ${pn(2)} hires one lord, a huge named demon whose aura drives nearby troops. Turn on the Lord chip and he leads your next big block.</li></ul></section>
 <section><h4>Move your horde</h4><ul>
 <li><b>Hold</b> a road beside your castle: minions gather at the gate. Let go and they march as one block. Dragging outward from the castle works too.</li>
 <li><b>Slide</b> onto the far castle before letting go to lock a route; quick-tap that road to stop it.</li>
@@ -49,21 +48,21 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Bastion','Soul W
 <li>A captured castle drops a level and loses its path.</li></ul></section>
 <section><h4>Walls and neutrals</h4><ul>
 <li><b>Hovels</b> near your Throne are easy prey.</li>
-<li><b>Bone fortresses</b> hold the heart of the map: walled, guarded by spires, rich in loot.</li>
-<li>Against walls attackers do a third of their damage unless they bring siege: greater demons, lords, the Siegebreakers card or Shatter.</li>
+<li><b>Bone fortresses</b> hold the heart of the map: walled, guarded by towers, rich in loot.</li>
+<li>Against walls attackers do about half their damage unless they bring siege: greater demons, lords or the Siegebreakers card.</li>
 <li><b>Soul springs</b> give souls while you hold them. Neutrals heal when left alone.</li></ul></section>
 <section><h4>Fog, night, terrain</h4><p>You only see around your castles and troops, and less under the blood moon. Cross lava at bridges and ridges at passes; the ice of Cocytus can be walked anywhere.</p></section>
 <section><h4>Victory</h4><ul>
 <li><b>Conquest</b>: take every rival Throne.</li>
-<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,700)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
+<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,650)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
 <button class="btn primary" data-a="ok">Got it</button>`,{ok:closeOv});};
 
 // ---------- campaign ----------
 const MISSIONS=[
- {t:'Fresh from the pit',d:'A newborn lord, a sleepy neighbour and a Throne to keep. Learn to breed, sacrifice and conquer.',mt:0,ms:0,bots:[{d:0,pe:2}],tut:true,delay:180},
- {t:'Across the Phlegethon',d:'Two rivers of fire and only a few bridges. Hold the crossings, feed your altar and push through.',mt:1,ms:0,bots:[{d:1,pe:0}]},
- {t:'Wrath and greed',d:'Two rival lords: one hurls everything at you, the other hoards souls. Break the hoarder before its altars outgrow you.',mt:7,ms:1,bots:[{d:0,pe:1},{d:1,pe:3}]},
- {t:'The bone pass',d:'A turtling lord walls up the passes of the Bone Highlands. Greater demons, lords and Shatter break walls.',mt:3,ms:1,bots:[{d:2,pe:2}]},
+ {t:'Fresh from the pit',d:'A newborn lord, a sleepy neighbour and a Throne to keep. Learn to breed, mine souls and conquer.',mt:0,ms:0,bots:[{d:0,pe:2}],tut:true,delay:180},
+ {t:'Across the Phlegethon',d:'Two rivers of fire and only a few bridges. Hold the crossings, turn your rear into soul mines and push through.',mt:1,ms:0,bots:[{d:1,pe:0}]},
+ {t:'Wrath and greed',d:'Two rival lords: one hurls everything at you, the other hoards souls. Break the hoarder before its soul mines outgrow you.',mt:7,ms:1,bots:[{d:0,pe:1},{d:1,pe:3}]},
+ {t:'The bone pass',d:'A turtling lord walls up the passes of the Bone Highlands. Greater demons, lords and the Siegebreakers card break walls.',mt:3,ms:1,bots:[{d:2,pe:2}]},
  {t:'Isles of obsidian',d:'Fight beside an allied lord across obsidian islands chained by bridges over the lava sea.',mt:2,ms:1,bots:[{d:1,pe:0,t:1},{d:1,pe:1,t:2},{d:1,pe:3,t:2}],you:1},
  {t:'The ninth circle',d:'At the frozen bottom of Hell three archdemons hold court. Only one will take the Throne.',mt:6,ms:2,bots:[{d:2,pe:1},{d:2,pe:3},{d:2,pe:2}]}];
 let CAMP=null;
@@ -81,25 +80,23 @@ $('#b-camp').onclick=()=>{leaveNet();renderCamp();show('camp');};
 function startMission(i){const m=MISSIONS[i];leaveNet();DAILY=null;NET.mode='local';
   const slots=[];for(let k=0;k<8;k++)slots.push({k:'x',n:'',t:0,d:1,p:'',pe:0});
   slots[0]={k:'h',n:myName,t:m.you||0,d:1,p:'host',pe:0};m.bots.forEach((b,k)=>{slots[k+1]={k:'b',n:'',t:b.t||0,d:b.d,p:'',pe:b.pe};});
-  CFG={slots,ms:m.ms,sp:1,mt:m.mt,gid:0,fixedSeed:7001+i*131,botDelay:m.delay||0};CAMP={i,tut:!!m.tut,step:0,t0:0,d0:0,sac:0};startGame();
+  CFG={slots,ms:m.ms,sp:1,mt:m.mt,gid:0,fixedSeed:7001+i*131,botDelay:m.delay||0};CAMP={i,tut:!!m.tut,step:0,t0:0,d0:0};startGame();
   setTimeout(()=>{overlay(`<h3></h3><p class="meta"></p><p class="sub"></p><button class="btn primary" data-a="go">To battle</button>`,{go:closeOv});
     $('#ov-card h3').textContent=(i+1)+'. '+m.t;$('#ov-card .meta').innerHTML=campMeta(m);$('#ov-card .sub').textContent=m.d;},50);}
 // tutorial steps: text plus the condition that completes each one
 const myDemons=()=>{let n=0;for(const c of G.castles)if(c.owner===mySlot&&c.u)n+=(c.u[1]||0)+(c.u[2]||0);for(const s of G.sol)if(s.o===mySlot&&(s.u===1||s.u===2))n++;return n;};
 const TUT=[
  {h:'Your Throne',p:'The castle under the crowned skull is your Throne. Lose it and you lose. Tap it to open its panel.',ok:()=>sel===G.home[mySlot]},
- {h:'Gather a horde',p:'Close the panel. Hold your finger on a road leading out of your castle: minions gather at the gate. Let go and they march.',ok:()=>G.sol.some(s=>s.o===mySlot&&s.st===0&&!s.sac)},
+ {h:'Gather a horde',p:'Close the panel. Hold your finger on a road leading out of your castle: minions gather at the gate. Let go and they march.',ok:()=>G.sol.some(s=>s.o===mySlot&&s.st===0)},
  {h:'Take a castle',p:'At a hovel or an enemy castle your minions fight the garrison. When it hits zero, the castle is yours. Take one.',ok:()=>G.castles.filter(c=>c.owner===mySlot).length>=2},
- {h:'Feed the altar',p:'Souls come only from sacrifice. Your Throne is an altar: tap it and press Sacrifice to turn minions into souls.',ok:()=>CAMP.sac},
- {h:'Pilgrims',p:'Tap a castle behind your lines and switch it to Offer. Its spare minions walk to your altar as glowing pilgrims and become souls.',ok:()=>G.castles.some(c=>c.owner===mySlot&&c.off)},
- {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. At level 3 a castle can take a path, like Soul Well or Hellforge.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
- {h:'Research',p:'Tap Research, draw three cards and keep one. Each draw costs more. Spell cards fill your two spell slots.',ok:()=>G.pl[mySlot].rn>0},
- {h:'Stronger demons',p:'Minions are weak. From level 2 a castle trains lesser demons (switch them on under Trains) or promotes 10 of its garrison at once.',ok:()=>myDemons()>=CAMP.d0+3},
- {h:'Spires',p:'In a castle panel, raise a spire on a road facing the enemy. It burns anyone walking past.',ok:()=>G.tw.some(t=>t.o===mySlot)||G.time-CAMP.t0>90},
+ {h:'Mine souls',p:'Souls are your only currency. Tap a castle behind your lines and switch it from Army to Souls: it stops breeding and makes souls instead. Kills pay a few too.',ok:()=>G.castles.some(c=>c.owner===mySlot&&c.mode)},
+ {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. At level 3 a castle can take a path: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
+ {h:'Research',p:'Tap Research, draw two cards and keep one. Each draw costs a little more.',ok:()=>G.pl[mySlot].rn>0},
+ {h:'Towers',p:'In a castle panel, buy towers. A ring of towers shoots anyone who comes near, and you can upgrade it twice.',ok:()=>G.castles.some(c=>c.owner===mySlot&&((c.tl|0)>0||(c.build&&c.build.k===1)))||G.time-CAMP.t0>90},
+ {h:'Spells',p:'Your three spells are ready. Spies lift the fog for a moment, Hellfire burns a crowd, Horde Boost rallies every soldier you have. Cast one.',ok:()=>G.pl[mySlot].cd.some(v=>v>G.gt)},
+ {h:'Stronger demons',p:'Minions are weak. A Spawner castle (a level 3 path) breeds lesser demons, and greater demons from level 5.',ok:()=>myDemons()>=CAMP.d0+3||G.time-CAMP.t0>120},
  {h:'Victory',p:'Gather a big army of demons and take the enemy Throne, the castle under the crowned skull. Your rival wakes up soon.',ok:()=>false}];
 function tutTick(){const el=$('#tut');if(!CAMP||!CAMP.tut||!G||G.over||mySlot<0){if(!el.hidden)el.hidden=true;return;}
-  // souls gained while the castle count stays put came from a sacrifice (capture loot arrives with a new castle)
-  const p=G.pl[mySlot],n=G.castles.reduce((a,c)=>a+(c.owner===mySlot),0);if(CAMP.le!=null&&p.earned>CAMP.le+0.01&&n===CAMP.lc)CAMP.sac=1;CAMP.le=p.earned;CAMP.lc=n;
   const st=TUT[CAMP.step];if(!st){el.hidden=true;return;}let ok=false;try{ok=st.ok();}catch(e){}
   if(ok){CAMP.step++;CAMP.t0=G.time;CAMP.d0=myDemons();tutTick();return;}
   el.hidden=false;$('#tut-h').textContent=(CAMP.step+1)+'/'+TUT.length+'  '+st.h;$('#tut-p').textContent=st.p;}
@@ -204,7 +201,7 @@ function beginPlay(){
   syncSpeedUi();
   if(mySlot>=0){const intro=t=>{if(G&&!G.over&&mySlot>=0&&!(CAMP&&CAMP.tut))toast(t,5000);}; // the tutorial box says it already
     setTimeout(()=>intro('Hold a road beside your castle to gather minions at the gate. Let go to march.'),400);
-    setTimeout(()=>intro('Tap your Throne to sacrifice minions for souls. Souls buy levels, demons and spells.'),11000);}
+    setTimeout(()=>intro('Switch rear castles to Souls mode to earn souls. Souls buy levels, towers and spells.'),11000);}
 }
 
 // ---------- host networking ----------
@@ -304,7 +301,7 @@ function hostLeft(){leaveNet();PHASE='menu';G=null;overlay(`<h3>Host left</h3><p
 
 // ---------- replays ----------
 let REC=null,RP=null,LAST_REPLAY=null;
-function recStart(){if(!G||NET.mode==='replay')return;REC={v:1,cfg:G.cfg,names:G.names,my:mySlot,frames:[],lastT:-1};}
+function recStart(){if(!G||NET.mode==='replay')return;REC={v:2,cfg:G.cfg,names:G.names,my:mySlot,frames:[],lastT:-1};}
 function recFrame(g){if(!REC||!G)return;const t=Math.round(G.time*10)/10;if(t-REC.lastT<0.24&&!G.over)return;REC.lastT=t;REC.frames.push([t,g||encode(G,30000)]);}
 function recFinish(){if(!REC||!REC.frames.length){REC=null;return;}recFrame(NET.mode==='client'?null:encode(G,30000));
   const r=REC;REC=null;r.win=G.winner;r.dur=G.time;LAST_REPLAY=r;
@@ -312,7 +309,7 @@ function recFinish(){if(!REC||!REC.frames.length){REC=null;return;}recFrame(NET.
   const thin={...r,frames:r.frames.filter((f,i)=>i%4===0||i===r.frames.length-1)};
   for(const step of [1,2,3]){try{const data=step===1?thin:{...thin,frames:thin.frames.filter((f,i)=>i%(step)===0||i===thin.frames.length-1)};store.set('bf-replay',JSON.stringify(data));if(store.get('bf-replay'))break;}catch(e){}}
   updateReplayBtn();}
-function savedReplay(){if(LAST_REPLAY)return LAST_REPLAY;try{const s=store.get('bf-replay');return s?JSON.parse(s):null;}catch(e){return null;}}
+function savedReplay(){if(LAST_REPLAY)return LAST_REPLAY;try{const s=store.get('bf-replay'),r=s?JSON.parse(s):null;return r&&r.v===2?r:null;}catch(e){return null;}} // v1 replays were written by the pre-revision-2 engine
 function updateReplayBtn(){const b=$('#b-replay');if(b)b.hidden=!savedReplay();}
 function startReplay(rec){
   if(!rec||!rec.frames||!rec.frames.length){toast('No replay saved yet.',1800);return;}

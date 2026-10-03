@@ -1,7 +1,7 @@
 # Brimfall
 
 A real-time conquest game for phones and browsers. You are a demon lord fighting for the thrones of Hell.
-Castles breed minions for free; sacrificing minions at altars is the only source of souls; souls buy everything else.
+Castles breed minions for free; souls (from Souls-mode castles, kills, springs and loot) are the only currency and buy everything else.
 Hold a road to muster an army, march on rival castles, draw research cards, hire a lord, and win by conquest or by opening the Hellgate.
 
 (Formerly *Keepfall*, a medieval castle game. The redesign is described in `DESIGN.md`.)
@@ -19,13 +19,14 @@ npm test                 # full bot games across player counts and map types, pl
 npm run sim:balance      # economic (Harvester) vs aggressive bots
 npm run sim:research     # value of research cards for identical bots
 npm run sim:length       # bigger games: length and stalls
+npm run sim:usage        # what the bots build and earn, per personality
 ```
 
 ## Layout
 | Path | What it is |
 |---|---|
-| `src/core.js` | Game engine: map generation, simulation, soldiers, souls and altars, cards, spells, lords, bots, sync encoding |
-| `src/art.js` | Procedural castle, hovel, spring, spire and Hellgate sprites, terrain builder |
+| `src/core.js` | Game engine: map generation, simulation, soldiers, supply, souls, castle towers, cards, spells, lords, bots, sync encoding |
+| `src/art.js` | Procedural castle (with tower rings), hovel, spring and Hellgate sprites, terrain builder |
 | `src/units.js` | Procedural unit figures (minions, demons, lords) and corpses |
 | `src/head.js` | Menus, lobby, campaign, daily challenge, replays, online glue |
 | `src/panel.js` | Commands, castle panel, research cards, spell bar, Send chips |

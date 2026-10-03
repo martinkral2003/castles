@@ -1,11 +1,12 @@
 {
   "name": "brimfall",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Brimfall: a real-time demon-lord conquest game for phones and browsers",
   "private": true,
   "scripts": {
     "build": "node build.mjs",
-    "test": "node tests/games.cjs",
+    "test": "node tests/mechanics.cjs && node tests/games.cjs",
+    "sim:usage": "node tests/bot-usage.cjs",
     "sim:balance": "node tests/eco-vs-aggro.cjs",
     "sim:research": "node tests/research-value.cjs",
     "sim:length": "node tests/game-length.cjs"

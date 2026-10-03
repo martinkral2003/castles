@@ -16,34 +16,37 @@ changing rules, the engine API or the UI structure.
 
 ## Architecture
 - **core.js**: `newGame(cfg)`, `step(G, dt)`, castles/edges graph (planar, dense, many routes), soldiers (individual units on roads with a spatial grid),
-  souls/altars/offer mode and pilgrims, research cards, spells, lords, Hellgate, bots (`botThink`, fog-limited via `botView`), encoding for online sync.
-- **art.js**: cached castle/hovel/spring sprites (two resolutions), terrain builder with themes (ash/frost/sulfur), spires, Hellgate, banners.
+  supply, Souls mode, kill souls, castle towers, research cards, spells, lords, Hellgate, bots (`botThink`, fog-limited via `botView`), encoding for online sync.
+- **art.js**: cached castle/hovel/spring sprites (two resolutions, with the castle tower ring), terrain builder with themes (ash/frost/sulfur), Hellgate, banners.
 - **units.js**: unit figures (minion, lesser demon, greater demon, lord), corpses.
 - **head.js**: screens, setup options, campaign (6 missions + tutorial), daily challenge, replays, online lobby, game over.
-- **panel.js** (+ `game.html`, `game.css`): commands, Send chips, spell bar, research card overlay, castle panel.
+- **panel.js** (+ `game.html`, `game.css`): commands, Send chips, spell bar (3 spells + Research), two-card overlay, castle panel (Army/Souls toggle, towers, paths).
 - **tail.js**: canvas renderer, effects, fog, HUD update, gestures, alerts, stats.
 - Online model: the **host's device runs the simulation**; clients send commands and render snapshots (~10/s).
   Transport is currently the claude.ai artifact room API (`ROOM.presence`, `peers`), which does not exist outside Claude.
   To ship online play, write a small adapter with the same shape on top of a WebSocket relay (game logic stays on the host).
 
-## Mechanics (current; details and numbers in DESIGN.md)
-- Every minion is a soldier or a soul. Castles breed minions free up to a level cap (and a global army cap); souls are the only currency.
-- Souls come from sacrifice at altars (Throne, Soul Wells): instant Sacrifice button, or Offer mode where surplus minions walk as pilgrims to the nearest altar.
-  Passive souls only from Soul Wells and Soul Springs; capture loot.
-- Units: Minion (free), Lesser demon (level 2+), Greater demon (Hellforge or level 4+; charges, breaks walls), Lord (hired in a Dark Tower, one per tower, aura).
-  Promotion converts garrison units for souls.
-- Castles: levels 1–5 (Throne 6), no buildings; a level-3 path decides the role: Bastion / Soul Well / Dark Tower / Hellforge.
-- Research: draw three random cards (price rises each draw), pick one. Two spell slots: Hellfire, Shatter, Eye of Hell, Frenzy, Plague (learned through cards).
-- Combat: veterans, walls need siege (greater demons, lords, Siegebreakers card, Shatter), road spires, muster limit 30+30/level.
-- Map: 8 types (lava rivers, isles, bone highlands, canyon, Cocytus, sulfur wastes…), easy hovels near Thrones and a walled-fortress core, soul springs, day/night, fog.
-- Victory: take every rival Throne, or finish the Hellgate and hold the Throne 4 minutes (option can disable).
+## Mechanics (revision 2, 2026-10-03; DESIGN.md has the numbers)
+- Castles breed minions free up to a level cap and a global army cap, both counted in **supply** (minion 1, lesser 2, greater 5, lord 8). Souls are the only currency.
+- Souls come from: a per-castle **Army / Souls** toggle (Souls mode stops breeding and mines souls), **kills** (small, victim gets 50% back, capped per 10 s),
+  **soul springs** (fairly placed, guarded) and Soul Well castles, and capture loot. No altars, sacrifice, pilgrims, promotion or Summon.
+- Units: Minion (any castle), Lesser demon (**Spawner** castle level 3+), Greater demon (Spawner level 5+ only), Lord (hired one per **Citadel**, aura).
+- Castles: levels 1-5 (Throne 6); a level-3 **path**: Soul Well / Citadel (walled, defence, lord) / Spawner (fast breeding, demons). **Castle towers** (`c.tl` 0-3,
+  one purchase builds a ring that shoots nearby enemies) replace road spires.
+- Research: two cards per draw (price `40*1.12^n`), 18 cards, each worth roughly half to one unit tier. Three spells from the start: Horde Boost (global), Spies, Hellfire.
+- Combat: veterans, walls need siege (greater demons, lords, Siegebreakers card), muster limit 30+30/level.
+- Map: 8 types, easy hovels near Thrones and a walled-fortress core (towers level 2), fair guarded springs, day/night, fog.
+- Victory: take every rival Throne, or finish the Hellgate (5 stages) and hold the Throne 4 minutes (option can disable).
+
+## Tests and sims (all Node, no deps; they `require` src/core.js)
+- `npm test`: `tests/mechanics.cjs` (scripted rule checks) then `tests/games.cjs` (8 bot games: no NaN, garrison sums, encode size).
+- `npm run sim:length` (32 bot games, finish rate and median), `sim:balance` (Harvester vs Aggressive duels, N=60), `sim:usage` (what bots build, per personality),
+  `sim:research` (win rate of a bot that starts with 2 stacks of each card; parallel). `TUNE='{"SY":3,...}'` overrides engine constants for sweeps (see DESIGN.md §2).
+- Run long sims through `bash -lc` in the background: they take 1-3 minutes.
 
 ## Status and open work
-1. **Balance / known gaps (2026-10-02 handoff)**: the game builds, runs and passes `tools/smoke.cjs`, but the engine work was cut short by a budget limit.
-   About half of the bot-only sim games (`node tests/games.cjs`) do not finish within 40 minutes (stalls), bots rarely train/promote greater demons, and
-   `tests/mechanics.cjs` (promised in DESIGN.md) was never written; `npm test` only runs `games.cjs`. Next steps: fix the stalls in `botThink`/constants, re-run
-   `sim:length` and `sim:balance` (targets: harvester vs aggressive ≈ 50/50, 4–6 player games 15–20 min), write the mechanics test.
-   The unit art (`units.js`) and panel agents were interrupted mid-polish: check lord/greater-demon visuals and panel layout at 390×844 with `tools/shot.cjs`.
+1. **Balance** (2026-10-03 pass): after the revision-2 rewrite 4-6 player games finish (0-1 of 32 unfinished, median about 12-14 min, a little short of the 15-20 target),
+   Aggressive and Harvester are about even in duels (about 10-15% of duels still stall at 30 min: mutual Hellgate turtling). Cards: check `sim:research` after any card change.
 2. **Multiplayer relay** for builds outside Claude (see Architecture).
 3. **Sound** (portals and stores expect it; none so far).
 4. **Name check**: "Soulfall" was dropped because it is taken (Hell-themed ARPG on Steam by King's Crown Studio, 2025; a 2015 board game; an itch.io title).
