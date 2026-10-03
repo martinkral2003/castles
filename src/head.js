@@ -267,8 +267,9 @@ $('#b-invite').onclick=async()=>{
   d.querySelector('b').textContent='Invite '+inv.n;const ta=d.querySelector('textarea');ta.value=inv.code;ta.onclick=()=>ta.select();
   d.querySelector('[data-copy]').onclick=e=>copyText(inv.code,e.target);const sh=d.querySelector('[data-share]');if(navigator.share){sh.hidden=false;sh.onclick=()=>shareText(inv.code);}
   const st=d.querySelector('[data-st]'),go=d.querySelector('[data-go]'),rp=d.querySelector('[data-reply]');
-  go.onclick=async()=>{st.textContent='Connecting…';try{await nr.accept(inv.id,rp.value);st.textContent='Waiting for the connection…';}catch(e){st.textContent='That reply code did not work.';}};
-  const t=setInterval(()=>{if(NET.nr!==nr||!d.isConnected){clearInterval(t);return;}if(inv.isOpen()){st.textContent='Connected ✓';go.hidden=true;rp.hidden=true;d.querySelector('.duo').hidden=true;ta.hidden=true;}},500);
+  go.onclick=async()=>{st.textContent='Connecting…';try{await nr.accept(inv.id,rp.value);st.textContent='Waiting for the connection…';inv.pasted=Date.now();}catch(e){st.textContent='That reply code did not work.';}};
+  const t=setInterval(()=>{if(NET.nr!==nr||!d.isConnected){clearInterval(t);return;}if(!inv.isOpen()&&inv.pasted){const q=inv.state(),el=Math.round((Date.now()-inv.pasted)/1000);st.textContent=q==='failed'?'The connection failed. Make a new invite and try again; strict networks (some mobile data and office Wi-Fi) cannot connect directly, and the friend must keep their page open the whole time.':'Connecting… '+q+' ('+el+' s)'+(el>25?'. Still trying; if this stays on checking, the networks cannot reach each other.':'');}
+    if(inv.isOpen()){st.textContent='Connected ✓';go.hidden=true;rp.hidden=true;d.querySelector('.duo').hidden=true;ta.hidden=true;}},500);
   $('#p2p-list').appendChild(d);};
 $('#b-p2p-copy').onclick=e=>copyText($('#p2p-out').value,e.target);
 if(navigator.share){$('#b-p2p-share').hidden=false;$('#b-p2p-share').onclick=()=>shareText($('#p2p-out').value);}
@@ -276,7 +277,8 @@ $('#b-p2p-join').onclick=async()=>{
   const msg=$('#join-msg'),text=$('#p2p-in').value;leaveNet();msg.textContent='Preparing your reply…';let r;
   try{r=await P2P.join(text);}catch(e){msg.textContent='That invite code did not work.';return;}
   const mine=r.nr;NET.nr=mine;NET.mode='client';NET.code='P2P';NET.seq=0;NET.cmds=[];NET.gid=null;NET.hadHost=false;G=null;PHASE='lobby';NET.spec=false;
-  $('#p2p-out').value=r.answer;$('#p2p-ans').hidden=false;msg.textContent='Send the reply code to the host, then wait here.';
+  $('#p2p-out').value=r.answer;$('#p2p-ans').hidden=false;msg.textContent='Send the reply code to the host, then wait here and keep this page open'+(/srflx|relay/.test(r.net)?'.':'. Warning: this network gave no internet address, so connecting is unlikely.');
+  const tq=setInterval(()=>{if(NET.nr!==mine||r.isOpen()){clearInterval(tq);return;}const q=r.state();if(q==='failed'){msg.textContent='The connection failed. Ask the host for a new invite; strict networks (some mobile data and office Wi-Fi) cannot connect directly.';clearInterval(tq);}else if(q!=='new')msg.textContent='Connecting… '+q;},700);
   r.opened.then(()=>{if(NET.nr!==mine)return;mine.presence({r:'c',n:myName,c:[],spec:0}).catch(()=>{});NET.unsub.push(mine.onPeers(onClientPeers,()=>{}));
     $('#wait-title').textContent='Online game';$('#wait-slots').innerHTML='';$('#wait-msg').textContent='Waiting for the host…';show('wait');
     setTimeout(()=>{if(NET.nr===mine&&!NET.hadHost){leaveNet();show('join');msg.textContent='The host did not answer.';}},12000);});

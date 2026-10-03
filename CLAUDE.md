@@ -26,7 +26,8 @@ changing rules, the engine API or the UI structure.
   so it works on GitHub Pages. It has the same shape as the claude.ai room API (`presence(patch)`, `onPeers`, `peers`, `leave`); presence patches are merged and relayed by the host.
 - Online model: the **host's device runs the simulation**; clients send commands and render snapshots (~10/s). `head.js` uses the claude.ai room (`ROOM`) when it exists
   (lobby list, 4-letter codes, spectators) and `P2P` otherwise (host makes one invite per friend, no spectators, up to 3 guests by default). Invite codes are about 650 characters;
-  the only outside service is a public STUN lookup (`stun.l.google.com`) for NAT traversal. A WebSocket relay with room codes would be a nicer join flow but needs a server.
+  outside services are public STUN servers (Google, Cloudflare) and, as a fallback for strict NATs, the free public TURN relay `openrelay.metered.ca` (DTLS-encrypted traffic, may be slow or disappear;
+  override with a JSON array of RTCIceServer objects in localStorage `bf-ice`). Both sides show the ICE state while connecting. Never tested across real NATs from the dev machine. A WebSocket relay with room codes would be a nicer join flow but needs a server.
 
 ## Mechanics (revision 4, 2026-10-03; DESIGN.md has the numbers and the revision notes)
 - Castles breed minions free up to a level cap and a global army cap, both counted in **supply** (minion 1, demon 2, lord 8). Souls are the only currency.
