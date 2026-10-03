@@ -1,4 +1,4 @@
-// ===== Brimfall unit figures (minion, lesser demon, greater demon, lord), corpses =====
+// ===== Brimfall unit figures (minion, demon, lord), corpses =====
 // Each figure is painted once per (scale level, type, colour, look) into an outlined sprite strip (8 walk + 6 attack frames,
 // facing right, foot-anchored) and blitted per unit with mirroring. Shadows, the lord's aura and banner, bearer flags
 // are cheap per-frame overlays. Public: drawUnit, drawCorpse, unitTop, warmUnits, SKIN, UNITART.

@@ -25,14 +25,14 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
   overlay(`<h3>How to play</h3><div class="help">
 <p class="lead">Castles breed minions. Souls are your only currency, and fighting is the fastest way to earn them.</p>
 <section><h4>Keep your Throne</h4><p>Your Throne is the castle under the crowned skull. Lose it and you are out; a team is out when all its Thrones have fallen.</p></section>
-<section><h4>Minions breed free</h4><p>Castles breed minions on their own, up to their capacity and your army cap. Both count <b>supply</b>: a minion is ${kv(()=>UNIT[0].sup,1)}, a lesser demon ${kv(()=>UNIT[1].sup,2)}, a greater demon ${kv(()=>UNIT[2].sup,5)}, a lord ${kv(()=>UNIT[3].sup,8)}. Higher levels hold more and breed faster; your Throne's level raises the army cap. Castles cut off from the Throne breed at half speed.</p></section>
+<section><h4>Minions breed free</h4><p>Castles breed minions on their own, up to their capacity and your army cap. Both count <b>supply</b>: a minion is ${kv(()=>UNIT[0].sup,1)}, a demon ${kv(()=>UNIT[1].sup,2)}, a lord ${kv(()=>UNIT[3].sup,8)}. Higher levels hold more and breed faster; your Throne's level raises the army cap. Castles cut off from the Throne breed at half speed.</p></section>
 <section><h4>Where souls come from</h4><ul>
 <li><b>Souls mode</b>: switch a castle from Army to Souls. It stops breeding and turns that effort into souls, while its garrison stays and defends. Safe rear castles make the best soul mines.</li>
 <li><b>Kills</b>: every enemy soldier you kill pays a few souls, and the loser gets a little back, so even a lost fight is not wasted. Payouts are capped, so one huge battle cannot decide the game.</li>
 <li><b>Soul springs</b> (placed fairly between rivals and guarded by neutrals) and ${pn(1)}s trickle souls on their own; captured castles pay loot.</li></ul></section>
 <section><h4>Spend souls on</h4><ul>
 <li><b>Levels</b>: three of them, more room, faster breeding and stronger towers each. Every castle you own makes upgrades 10% dearer.</li>
-<li><b>Specialisation</b>: the level 3 upgrade is also where a castle picks its role, permanently: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser and, rarely, greater demons).</li>
+<li><b>Specialisation</b>: the level 3 upgrade is also where a castle picks its role, permanently: ${pn(1)} (a big steady income), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes demons).</li>
 <li><b>Towers</b> grow with the castle: every level above 1 adds a ring of towers that shoot nearby enemies, and a Citadel gets one more.</li>
 <li><b>Research</b>: one tap draws two cards and you keep one. Early cards are weak, later ones much stronger, and each draw costs a little more.</li>
 <li><b>Spells</b>: both are ready from the start: ${spells}. Cards make them stronger.</li>
@@ -43,13 +43,13 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
 <li><b>Tap</b> a road to send a small squad. The Send chips pick which types march.</li></ul></section>
 <section><h4>Battle</h4><ul>
 <li>Troops fight hand to hand: a solid block beats a trickle.</li>
-<li>Lesser demons hold the line. Greater demons fly, charge, savage minions and smash walls.</li>
+<li>Demons are the elite troops: sturdier, harder hitting and able to smash walls. Lords lead them.</li>
 <li>Killers rank up into veterans. Castles defend better than open ground, more on hills.</li>
 <li>A captured castle drops a level and loses its path.</li></ul></section>
 <section><h4>Walls and neutrals</h4><ul>
 <li><b>Hovels</b> near your Throne are easy prey.</li>
 <li><b>Bone fortresses</b> hold the heart of the map: walled, guarded by towers, rich in loot.</li>
-<li>Against walls attackers do about half their damage unless they bring siege: greater demons, lords or the Siegebreakers card.</li>
+<li>Against walls attackers do about half their damage unless they bring siege: demons, lords or the Siegebreakers card.</li>
 <li><b>Soul springs</b> give souls while you hold them. Neutrals heal when left alone.</li></ul></section>
 <section><h4>Fog, night, terrain</h4><p>You only see around your castles and troops, and less under the blood moon. Cross lava at bridges and ridges at passes; the ice of Cocytus can be walked anywhere.</p></section>
 <section><h4>Victory</h4><ul>
@@ -62,7 +62,7 @@ const MISSIONS=[
  {t:'Fresh from the pit',d:'A newborn lord, a sleepy neighbour and a Throne to keep. Learn to breed, mine souls and conquer.',mt:0,ms:0,bots:[{d:0,pe:2}],tut:true,delay:180},
  {t:'Across the Phlegethon',d:'Two rivers of fire and only a few bridges. Hold the crossings, turn your rear into soul mines and push through.',mt:1,ms:0,bots:[{d:1,pe:0}]},
  {t:'Wrath and greed',d:'Two rival lords: one hurls everything at you, the other hoards souls. Break the hoarder before its soul mines outgrow you.',mt:7,ms:1,bots:[{d:0,pe:1},{d:1,pe:3}]},
- {t:'The bone pass',d:'A turtling lord walls up the passes of the Bone Highlands. Greater demons, lords and the Siegebreakers card break walls.',mt:3,ms:1,bots:[{d:2,pe:2}]},
+ {t:'The bone pass',d:'A turtling lord walls up the passes of the Bone Highlands. Demons, lords and the Siegebreakers card break walls.',mt:3,ms:1,bots:[{d:2,pe:2}]},
  {t:'Isles of obsidian',d:'Fight beside an allied lord across obsidian islands chained by bridges over the lava sea.',mt:2,ms:1,bots:[{d:1,pe:0,t:1},{d:1,pe:1,t:2},{d:1,pe:3,t:2}],you:1},
  {t:'The ninth circle',d:'At the frozen bottom of Hell three archdemons hold court. Only one will take the Throne.',mt:6,ms:2,bots:[{d:2,pe:1},{d:2,pe:3},{d:2,pe:2}]}];
 let CAMP=null;
@@ -93,7 +93,7 @@ const TUT=[
  {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. The upgrade to level 3 also picks a specialisation: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
  {h:'Research',p:'Tap Research: it draws two cards at once, keep one. Early cards are weak, later ones much stronger.',ok:()=>G.pl[mySlot].rn>0},
  {h:'Spells',p:'Both spells are ready. Spies lift the fog for a moment, Horde Boost rallies every soldier you have. Cast one.',ok:()=>G.pl[mySlot].cd.some(v=>v>G.gt)},
- {h:'Stronger demons',p:'Minions are weak. A Spawner castle (a level 3 path) breeds lesser demons, and greater demons from level 5.',ok:()=>myDemons()>=CAMP.d0+3||G.time-CAMP.t0>120},
+ {h:'Stronger demons',p:'Minions are weak. A Spawner castle (picked with the level 3 upgrade) breeds demons.',ok:()=>myDemons()>=CAMP.d0+3||G.time-CAMP.t0>120},
  {h:'Victory',p:'Gather a big army of demons and take the enemy Throne, the castle under the crowned skull. Your rival wakes up soon.',ok:()=>false}];
 function tutTick(){const el=$('#tut');if(!CAMP||!CAMP.tut||!G||G.over||mySlot<0){if(!el.hidden)el.hidden=true;return;}
   const st=TUT[CAMP.step];if(!st){el.hidden=true;return;}let ok=false;try{ok=st.ok();}catch(e){}

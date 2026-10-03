@@ -18,7 +18,7 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   const G=mk();const c=G.castles.find((k,i)=>i!==G.capIdx[0]&&i!==G.capIdx[1]&&k.kind!=='m'),T=own(G,0);prep(G);c.owner=0;c.u=[0,0,0];c.size=0;c.lv=2;c.path=0;
   ok(H.maxLv(c)===3&&H.LV.length===4,'three castle levels');
   ok(!H.unitOk(c,1)&&!H.unitOk(c,2),'no demons without a Spawner');
-  c.lv=3;c.path=3;ok(H.unitOk(c,1)&&H.unitOk(c,2),'a level-3 Spawner makes lessers and greaters');
+  c.lv=3;c.path=3;ok(H.unitOk(c,1)&&!H.unitOk(c,2),'a level-3 Spawner makes demons (and nothing retired)');
   G.pl[0].mod.acap=9;
   for(const [nm,k,m] of [['castle',c,H.SPAWN_MIX[3]],['Throne',T,H.SPAWN_MIX.T]]){k.lv=3;k.u=[0,0,0];k.size=0;k.path=3;k.mode=0;run(G,50);
     const sp=k.u[0]+2.2*k.u[1]+7*k.u[2];
@@ -31,7 +31,7 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   const want=H.modeRate(G,c)*30;ok(G.pl[0].souls-s0>want*0.9&&G.pl[0].souls-s0<want*1.1+0.5,'Souls mode pays '+want.toFixed(1)+' souls in 30s, got '+(G.pl[0].souls-s0).toFixed(1));
   ok(H.setMode(G,0,G.castles.findIndex(k=>k.kind==='m'),1)===false||!G.castles.some(k=>k.kind==='m'),'springs cannot switch to Souls mode');
   c.mode=0;const w=H.modeRate(G,c);ok(w===0,'Army castle has no mode income');
-  c.mode=1;c.path=1;const a=H.modeRate(G,c);c.path=0;ok(near(a/H.modeRate(G,c),1.5,0.001),'Soul Well gives +50% in Souls mode');
+  c.mode=1;c.path=1;const a=H.modeRate(G,c);c.path=0;ok(near(a/H.modeRate(G,c),2,0.001),'Soul Well doubles Souls mode');
 }
 { // kills pay the killer, give the victim a consolation, and are capped per window
   const G=mk();prep(G);G.gt=100;const e0=G.pl[0].earned,e1=G.pl[1].earned,v=H.killSouls(0);
@@ -41,7 +41,7 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   const f0=G.pl[0].earned;for(let i=0;i<20;i++)H.kill(G,0,{o:1,u:3},10,10);
   ok(G.pl[0].earned-f0<=H.KILL_CAP+0.01&&G.pl[0].earned-f0>H.KILL_CAP*0.5,'kill souls are capped ('+(G.pl[0].earned-f0).toFixed(1)+' of '+H.KILL_CAP+')');
   G.gt+=11;const g0=G.pl[0].earned;H.kill(G,0,{o:1,u:0},10,10);ok(G.pl[0].earned>g0,'the cap window reopens');
-  ok(near(H.killSouls(0),H.KILL_V,1e-9)&&near(H.killSouls(1),H.KILL_V*1.45/.75,1e-9)&&near(H.killSouls(3),H.KILL_V*14/.75,1e-9),'kill value scales with hp');
+  ok(near(H.killSouls(0),H.KILL_V,1e-9)&&near(H.killSouls(1),H.KILL_V*H.UNIT[1].hp/.75,1e-9)&&near(H.killSouls(3),H.KILL_V*14/.75,1e-9),'kill value scales with hp');
 }
 { // upgrades: cost scales with castles owned, towers come with the level, level 3 is where a castle specialises
   const G=mk();const ci=G.capIdx[0],c=own(G,0);prep(G);const s0=G.pl[0].souls;

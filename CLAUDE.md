@@ -29,10 +29,10 @@ changing rules, the engine API or the UI structure.
   the only outside service is a public STUN lookup (`stun.l.google.com`) for NAT traversal. A WebSocket relay with room codes would be a nicer join flow but needs a server.
 
 ## Mechanics (revision 4, 2026-10-03; DESIGN.md has the numbers and the revision notes)
-- Castles breed minions free up to a level cap and a global army cap, both counted in **supply** (minion 1, lesser 2, greater 5, lord 8). Souls are the only currency.
+- Castles breed minions free up to a level cap and a global army cap, both counted in **supply** (minion 1, demon 2, lord 8). Souls are the only currency.
 - Souls come from: a per-castle **Army / Souls** toggle (Souls mode stops breeding and mines souls), **kills** (small, victim gets 50% back, capped per 10 s),
   **soul springs** (fairly placed, guarded) and Soul Well castles, and capture loot. No altars, sacrifice, pilgrims, promotion or Summon.
-- Units: Minion (any castle), Lesser and Greater demon (**Spawner** castles only, greater are rare), Lord (hired one per **Citadel**, aura).
+- Units: Minion (any castle), Demon (**Spawner** castles only, counts as siege), Lord (hired one per **Citadel**, aura, cheaper than before). Unit slot 2 is retired but kept so indices stay stable.
 - Castles: **three levels** (Throne too); the level-3 upgrade is also the **specialisation**: Soul Well / Citadel (walled, defence, lord) / Spawner (fast breeding, demons).
   Upgrades cost 10% more per castle owned. **Castle towers** (`c.tl`) come automatically with the level; a castle's only actions are Army/Souls and upgrade (plus lord, Hellgate).
 - Research: one tap draws two cards (price `40*1.15^n`), 17 cards; card power is tiered by draws taken (weak early, strong late). Two spells from the start: Horde Boost (global), Spies.

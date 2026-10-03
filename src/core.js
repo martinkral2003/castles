@@ -4,25 +4,25 @@ const COLORS=['#ff4b4b','#4aa3ff','#46d68c','#ffc83d','#b277ff','#ff8a3d','#35d4
 const NEUTRAL=9,ROUTE_IV=2.4,ROUTE_PKT=12;
 const TUNE=typeof process!=='undefined'&&process.env&&process.env.TUNE?JSON.parse(process.env.TUNE):{}; // sim tuning overrides (Node only)
 const SPEED_S=25,ENGAGE=26,MELEE=7,HIT_F=0.36,CD_F=0.9,HIT_W=0.155,CD_W=1.25,FIRE=TUNE.FIRE??0.115,MAX_SOL=560;
-const LV=[null,{cap:45,g:.35},{cap:90,g:.6},{cap:150,g:.95}]; // three levels; the Throne holds 40% more and breeds 25% faster than a castle of its level
+const LV=[null,{cap:45,g:.35},{cap:100,g:.7},{cap:170,g:1.2}]; // three levels; the Throne holds 40% more and breeds 25% faster than a castle of its level
 const lvg=c=>LV[c.lv].g*(c.capital>=0?1.25:1);
-const LVCOST=[0,70,160];let GG=null;
+const LVCOST=[0,60,140];let GG=null;
 const TW_R=[0,80,90,100],TW_FIRE=[0,5,9,14].map(v=>v*(TUNE.TWS??0.6));
 const WALL_MUL=TUNE.WALL??0.55,SOUL_YIELD=TUNE.SY??3.0,KILL_V=TUNE.KV??0.45,KILL_BACK=0.5,KILL_CAP=TUNE.KC??30,KILL_WIN=10,CATCHUP=0,SPRING_GUARD=30,LORD_R=85,LORD_CD=40,LORD_HEAL=0.4;
 const PATHS=[null,
- {name:'Soul Well',desc:'Gathers souls on its own; Souls mode yields 50% more; breeds 30% slower'},
+ {name:'Soul Well',desc:'Gathers 1.2 souls a second on its own, and Souls mode yields twice as much; breeds 30% slower'},
  {name:'Citadel',desc:'Walled, defence ×1.6, holds 25% more, sees far, cheaper towers, hires a lord. Not for the Throne'},
- {name:'Spawner',desc:'Breeds 40% faster and is the only castle that makes lesser and greater demons'}];
+ {name:'Spawner',desc:'Breeds 40% faster and is the only castle that makes demons'}];
 const PATH_T=15,LEVEL_T=12,UP_SCALE=TUNE.UCS??0.1;
 const WONDER_COST=TUNE.WG??900,WONDER_T=45,WONDER_STAGES=5,WONDER_HOLD=TUNE.WH??240;
 // sup = supply weight (army cap and castle capacity), gcost = breeding it eats, req = Spawner level needed (the lord is hired, never bred)
 const UNIT=[{name:'Minion',short:'Minion',hp:.75,spd:1,dmg:.27,wall:1,sup:1,gcost:1,req:1},
- {name:'Lesser demon',short:'Lesser',hp:1.45,spd:1,dmg:.4,wall:1.1,sup:2,gcost:2.2,req:3},
- {name:'Greater demon',short:'Greater',hp:2.2,spd:1.5,dmg:.62,wall:1.8,sup:5,gcost:7,req:3},
+ {name:'Demon',short:'Demon',hp:1.7,spd:1,dmg:.45,wall:1.2,sup:2,gcost:2.2,req:3},
+ {name:'(retired)',short:'-',hp:2.2,spd:1.5,dmg:.62,wall:1.8,sup:5,gcost:7,req:99},
  {name:'Lord',short:'Lord',hp:14,spd:.9,dmg:1.15,wall:2.2,sup:8,gcost:0,req:0}];
 const NU=3;
-// share of a Spawner's breeding spent on [minion, lesser, greater]; T = the Throne
-const SPAWN_MIX={3:[.62,.28,.1],T:[.5,.35,.15]};
+// share of a Spawner's breeding spent on [minion, demon, (retired)]; T = the Throne
+const SPAWN_MIX={3:[.68,.32,0],T:[.55,.45,0]};
 const HORDE_DMG=.3,HORDE_SPD=.2;
 const SPELLS=[
  {id:0,name:'Horde Boost',desc:'All your soldiers in the field deal 30% more damage and march 20% faster for 15 s',cost:110,cd:90,kind:'global',dur:15},
@@ -57,7 +57,7 @@ const musterMul=(G,s)=>1+(mod(G,s,'march')-1)*1.25;
 const LORD_NAMES=['Malvek','Azgor','Belthar','Vexis','Morgrath','Zerath','Ulkor','Draven','Sythra','Kragmor','Nhazul','Orbas','Raszul','Thessk','Vorgath','Xerith','Gorrul','Ishtak','Baalor','Mephor'];
 const NEUT_IDLE=6;
 function counterMul(a,b){return a===2&&b===0?1.5:1;}
-// can this castle breed type t (the Spawner path makes lesser demons from level 3 and greater demons from level 5)
+// can this castle breed type t (only a level-3 Spawner makes demons)
 const unitOk=(c,t)=>t===0||(t>0&&t<NU&&c.kind!=='m'&&c.path===3&&c.lv>=UNIT[t].req);
 const load=c=>c.u[0]*UNIT[0].sup+c.u[1]*UNIT[1].sup+c.u[2]*UNIT[2].sup;
 function addT(c,t,n){if(t>=NU)t=0;c.u[t]+=n;c.size+=n;}
@@ -211,7 +211,7 @@ function upCost(G,s,c){return c&&c.lv<maxLv(c)?Math.round(LVCOST[c.lv]*(1+UP_SCA
 function syncTowers(c){c.tl=c.kind==='m'?0:Math.min(3,Math.max(0,c.lv-1)+(c.path===2?1:0));}
 const lootOf=c=>Math.round(5*c.lv+(isWalled(c)?40:0));
 function researchCost(G,s){return Math.round(40*Math.pow(1.15,G.pl[s].rn));}
-function lordPrice(G,s){return Math.round((140+70*G.pl[s].lh)*mod(G,s,'lcost'));}
+function lordPrice(G,s){return Math.round((100+50*G.pl[s].lh)*mod(G,s,'lcost'));}
 function spellCost(G,s,id){return Math.round(SPELLS[id].cost*(1-[.2,.15][id]*mod(G,s,MAGIC_KEY[id])));}
 function spellCd(G,s,id){return SPELLS[id].cd;}
 function spellR(G,s,id){const n=mod(G,s,MAGIC_KEY[id]);return(SPELLS[id].r||0)*(id===1?1+.3*n:1);}
@@ -229,8 +229,8 @@ function kill(G,killer,t,x,y){ev(G,{t:'die',x,y,o:t.o,u:t.u});const pk=killer>=0
   if(!pk||teamOf(G,killer)===teamOf(G,t.o))return;const v=killSouls(t.u);
   killPay(G,killer,v*mod(G,killer,'tithe'),x,y);killPay(G,t.o,v*KILL_BACK*mod(G,t.o,'tithe'),x,y);}
 function flushSouls(G){for(let s=0;s<8;s++){const p=G.pl[s];if(p.sn>=0.5){ev(G,{t:'soul',x:p.sx,y:p.sy,s,n:Math.round(p.sn),why:0});p.sn=0;}}}
-function passiveRate(G,c){if(c.owner===NEUTRAL||!c.sup)return 0;const g=c.kind==='m'?1.2*(1+0.6*(c.lv-1)):c.path===1?0.3+0.1*c.lv:0;return g*mod(G,c.owner,'well');}
-function modeRate(G,c){if(c.owner===NEUTRAL||c.kind==='m'||!c.mode)return 0;return lvg(c)*SOUL_YIELD*(c.path===1?1.5:1)*mod(G,c.owner,'tithe')*(c.sup?1:0.5);}
+function passiveRate(G,c){if(c.owner===NEUTRAL||!c.sup)return 0;const g=c.kind==='m'?1.2*(1+0.6*(c.lv-1)):c.path===1?1.2:0;return g*mod(G,c.owner,'well');}
+function modeRate(G,c){if(c.owner===NEUTRAL||c.kind==='m'||!c.mode)return 0;return lvg(c)*SOUL_YIELD*(c.path===1?2:1)*mod(G,c.owner,'tithe')*(c.sup?1:0.5);}
 function soulRate(G,c){return passiveRate(G,c)+modeRate(G,c);}
 function growRate(G,c){return c.kind==='m'||c.mode?0:lvg(c)*(c.path===1?0.7:c.path===3?1.4:1)*mod(G,c.owner,'grow')*(c.sup?1:0.5);}
 // breeding: a Spawner spends its growth in fixed shares on the unit types it can make
@@ -252,7 +252,7 @@ function dispatch(G,slot,from,to,n,mask){
   const lr=(mask&8)&&us.length>=6&&c.lords.length?c.lords.shift():null;
   placeBlock(G,slot,from,to,us,footW(c)*0.9,-1,0,G.gid++,lr);
   return us.length;}
-// marching block: lesser demons in front, minions behind, greater demons on the flanks, the lord at the head.
+// marching block: demons in front, minions behind, the lord at the head.
 // us: unit types to create, or existing soldiers to re-form (muster)
 function placeBlock(G,slot,from,to,us,d0,dir,st,g,lr){
   const ty=x=>typeof x==='number'?x:x.u,put=(x,d,off)=>{if(typeof x==='number')mkSol(G,slot,from,to,d,off,st,x,g,x===3?lr:null);else{x.d=d;x.off=off;}};
@@ -418,7 +418,7 @@ function stepSoldiers(G,dt){
       if(d>1){const m=Math.min(d,v);s.x+=dx/d*m;s.y+=dy/d*m;s.hx=dx/d;s.hy=dy/d;}
       else{s.hx=(c.x-s.x);s.hy=(c.y-s.y);const hl=Math.hypot(s.hx,s.hy)||1;s.hx/=hl;s.hy/=hl;
         (c._atk||(c._atk=[])).push(s);
-        s.cd-=dt;if(s.cd<=0){s.cd=CD_W*(0.8+G.rng()*0.4);const walled=isWalled(c),siege=s.u>=2||mod(G,s.o,'siege');const dmg=HIT_W*U.wall*dmgOf(s)/U.dmg*(walled&&!siege?WALL_MUL:1)/defMul(G,c);scaleT(c,c.size-dmg);c.last=s.o;c.idle=0;
+        s.cd-=dt;if(s.cd<=0){s.cd=CD_W*(0.8+G.rng()*0.4);const walled=isWalled(c),siege=s.u>=1||mod(G,s.o,'siege');const dmg=HIT_W*U.wall*dmgOf(s)/U.dmg*(walled&&!siege?WALL_MUL:1)/defMul(G,c);scaleT(c,c.size-dmg);c.last=s.o;c.idle=0;
           if(c.size<=0.001)capture(G,s.to,s.o);}}}
   }
   // garrisons fire back (lords add fire)
@@ -562,7 +562,7 @@ function botThink(G,slot){
     if(c.route>=0&&!raid.has(c.route))c.route=-1;
     if(raid.has(c.route))continue;
     if(c.size<10||c.build)continue;
-    const keep=c.capital>=0?Math.max(15,threat[ci]*1.3):pe===2?c.size*0.3:3,sf=c.size>0?(c.u[2]+(c.lords.length?8:0))/c.size:0;
+    const keep=c.capital>=0?Math.max(15,threat[ci]*1.3):pe===2?c.size*0.3:3,sf=c.size>0?(c.u[1]+(c.lords.length?8:0))/c.size:0;
     let best=-1,bs=0,bneed=0;
     for(const {to,e} of G.adj[ci]){if(isMine(to))continue;const t=C[to];const len=G.edges[e].len;
       const tr=len/SPEED_S;const grow=t.owner===NEUTRAL?0:LV[t.lv].g*tr*G.sp;

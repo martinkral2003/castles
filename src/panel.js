@@ -16,7 +16,7 @@ const gly=(id,cls)=>`<svg class="gl${cls?' '+cls:''}" aria-hidden="true"><use hr
 const putT=(el,t)=>{if(el&&el.textContent!==t)el.textContent=t;};
 const putH=(el,h)=>{if(el&&el._h!==h){el._h=h;el.innerHTML=h;}};
 const fmtSo=v=>!Number.isFinite(v)?'–':v>=100||Math.abs(v-Math.round(v))<.05?String(Math.round(v)):v.toFixed(1);
-const UGL=['minion','lesser','greater','lord'];
+const UGL=['minion','lesser','greater','lord']; // glyph ids (the demon uses the 'lesser' glyph)
 const cardsOf=k=>{const id=CARDS.findIndex(q=>q&&q.key===k);return id>=0&&mySlot>=0?cardCount(G,mySlot,id)|0:0;};
 const remoteSol=()=>NET.mode==='client'||NET.mode==='replay'?(G.csol||[]):G.sol;
 
@@ -64,8 +64,7 @@ function hordeArt(){const col=mySlot>=0?COLORS[mySlot]:COLORS[0],H=[24,30,42,50]
 $('#b-units').onclick=()=>{const U=t=>UNIT[t]||{},pt=t=>`<span class="upt"><canvas data-uc="${t}"></canvas>${gly(UGL[t])}</span>`,hp=U(0).hp?(U(1).hp/U(0).hp).toFixed(1):'2';
   overlay(`<h3>Your horde</h3><div class="ut">
 <div class="utr">${pt(0)}<p><b>Minions</b> breed free in every castle up to its cap. Weak alone, deadly in a swarm. Supply ${U(0).sup}.</p></div>
-<div class="utr">${pt(1)}<p><b>Lesser demons</b> are the sturdy line, with ${hp}× a minion's health. Supply ${U(1).sup}. Only a Spawner castle breeds them (${escH(reqTxt(1))}).</p></div>
-<div class="utr">${pt(2)}<p><b>Greater demons</b> fly fast, charge, tear through minions, swing round lesser demons and smash walls. Supply ${U(2).sup}. ${escH(reqTxt(2))}.</p></div>
+<div class="utr">${pt(1)}<p><b>Demons</b> are the elite: ${hp}× a minion's health, hit harder and smash walls. Supply ${U(1).sup}. Only a Spawner castle breeds them (${escH(reqTxt(1))}).</p></div>
 <div class="utr">${pt(3)}<p><b>Lords</b> are raised one per Citadel. Supply ${U(3).sup}. A lord leads the next block of 6 or more out, and demons near him hit harder and march faster.</p></div>
 <p>Your horde cap counts <b>supply</b>, not heads, in the army and in every castle.</p>
 <p><b>Souls mode</b> in a castle panel stops its breeding and turns it into souls. Kills pay a few souls too, and the loser gets a little back. Souls buy everything.</p>
@@ -132,7 +131,7 @@ function fmtClock(t){t=Math.max(0,Math.ceil(t));return Math.floor(t/60)+':'+Stri
 function chip(t,cls){return`<span class="chip ${cls||''}">${t}</span>`;}
 const secH=(t,x)=>`<div class="sec"><span>${t}</span>${x||''}</div>`;
 const costEl=k=>`<em class="cost" data-c="${k}">${gly('wisp')}<span></span></em>`;
-function reqTxt(t){const r=UNIT[t]&&UNIT[t].req;return t===0?'any castle':t===3?'raised in a Citadel':'a Spawner castle at level '+r+(t===1?' or higher':' or 6');}
+function reqTxt(t){const r=UNIT[t]&&UNIT[t].req;return t===0?'any castle':t===3?'raised in a Citadel':'a level-3 Spawner castle';}
 function upSub(c){const n=c.lv+1,q={...c,lv:n};if(c.kind==='m')return'+'+(passiveRate(G,{...q,sup:true})*G.sp).toFixed(1)+' souls/s at level '+n+(c.sup?'':' once linked to your Throne');
   let t='Holds '+capOf(q)+' supply, breeds and mines souls faster, stronger towers';
   if(c.capital>=0){const a=armyCap(G,mySlot);let b=a;c.lv=n;try{b=armyCap(G,mySlot);}finally{c.lv=n-1;}if(b>a)t+=', horde cap +'+(b-a);}
@@ -212,7 +211,7 @@ function tickPanel(P,c,s,p,mine,visible,ls,lords){
   if(mine&&c.kind!=='m')cp+=`<span class="cp mu">muster ${musterCap(c)}</span>`;
   putH(P.querySelector('[data-cp]'),cp);
   if(!mine){const oh=P.querySelector('[data-oh]');let t='';
-    if(visible&&isWalled(c))t=cardsOf('siege')?'Walled, but your Siegebreakers strike it at full strength.':'Walled: attackers do '+Math.round(WALL_MUL*100)+'% damage unless they bring siege (greater demons, lords or Siegebreakers).';
+    if(visible&&isWalled(c))t=cardsOf('siege')?'Walled, but your Siegebreakers strike it at full strength.':'Walled: attackers do '+Math.round(WALL_MUL*100)+'% damage unless they bring siege (demons, lords or Siegebreakers).';
     else if(s.kind==='m')t='A soul spring pours out souls for whoever holds it, more at higher levels. Its guards will fight.';
     else if(s.owner===NEUTRAL)t='Neutrals heal when left alone: strike with one solid block.';
     if(visible&&(c.tl|0)>0)t=(t?t+' ':'')+'Its towers shoot at anyone nearby.';

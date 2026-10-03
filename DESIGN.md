@@ -39,6 +39,13 @@ towers), the five spell-learning cards, spell slots.
 * **Cards scale less**: `TIER_MUL = [.7, 1, 1.25]` and research costs `round(40·1.15^n)`.
 * Because towers now come with every upgraded castle, tower fire is ×0.6 (`TW_FIRE`, tuning key `TWS`). Sims on revision 4 (80 duels, 32 bot games): Harvester vs Aggressive about even, 4-6 player median about 26 min, about 60% end by Hellgate (900 a stage).
 
+**Revision 5 (2026-10-03, night) overrides earlier revisions where they differ:**
+* **Three unit types: Minion, Demon, Lord.** `UNIT[1]` is the Demon (hp 1.7, dmg .45, supply 2, growth cost 2.2, bred only by a level-3 Spawner, counts as siege); slot 2 (the old greater demon) is **retired**
+  (`req: 99`, never bred, no UI) so the soldier/lord indices and the sync encoding stay as they were. `SPAWN_MIX = {3:[.68,.32,0], T:[.55,.45,0]}`. The Send bar has Minion / Demon / Lord chips.
+* **Lord is cheaper**: `(100 + 50·lords hired) × cards.lcost` (was 140 + 70·n).
+* **The economy path pays**: `LV = [null,{cap:45,g:.35},{cap:100,g:.7},{cap:170,g:1.2}]`, `LVCOST = [0,60,140]`; a **Soul Well** gives 1.2 souls/s on its own and doubles Souls-mode yield.
+  Sims: Soul Wells per bot rose from about 0.5 to 2-4, Turtle bots now earn the most (20k+ souls a game) and win the most free-for-alls; Harvester vs Aggressive duels about 29-20.
+
 ---------------------------------------------------------------------------------------------------------------------
 
 ## 1. Rules
