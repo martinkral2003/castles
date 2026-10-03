@@ -31,9 +31,9 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
 <li><b>Kills</b>: every enemy soldier you kill pays a few souls, and the loser gets a little back, so even a lost fight is not wasted. Payouts are capped, so one huge battle cannot decide the game.</li>
 <li><b>Soul springs</b> (placed fairly between rivals and guarded by neutrals) and ${pn(1)}s trickle souls on their own; captured castles pay loot.</li></ul></section>
 <section><h4>Spend souls on</h4><ul>
-<li><b>Levels</b>: three of them, more room and faster breeding each. Level 3 unlocks a path.</li>
-<li><b>Paths</b> at level 3, permanent: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser and, rarely, greater demons).</li>
-<li><b>Towers</b>: one purchase raises a ring of towers round a castle that shoot anything nearby. Upgrade them up to level 3.</li>
+<li><b>Levels</b>: three of them, more room, faster breeding and stronger towers each. Every castle you own makes upgrades 10% dearer.</li>
+<li><b>Specialisation</b>: the level 3 upgrade is also where a castle picks its role, permanently: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser and, rarely, greater demons).</li>
+<li><b>Towers</b> grow with the castle: every level above 1 adds a ring of towers that shoot nearby enemies, and a Citadel gets one more.</li>
 <li><b>Research</b>: one tap draws two cards and you keep one. Early cards are weak, later ones much stronger, and each draw costs a little more.</li>
 <li><b>Spells</b>: both are ready from the start: ${spells}. Cards make them stronger.</li>
 <li><b>Lords</b>: each ${pn(2)} hires one lord, a huge named demon whose aura drives nearby troops. Turn on the Lord chip and he leads your next big block.</li></ul></section>
@@ -54,7 +54,7 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
 <section><h4>Fog, night, terrain</h4><p>You only see around your castles and troops, and less under the blood moon. Cross lava at bridges and ridges at passes; the ice of Cocytus can be walked anywhere.</p></section>
 <section><h4>Victory</h4><ul>
 <li><b>Conquest</b>: take every rival Throne.</li>
-<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,650)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
+<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,900)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
 <button class="btn primary" data-a="ok">Got it</button>`,{ok:closeOv});};
 
 // ---------- campaign ----------
@@ -90,9 +90,8 @@ const TUT=[
  {h:'Gather a horde',p:'Close the panel. Hold your finger on a road leading out of your castle: minions gather at the gate. Let go and they march.',ok:()=>G.sol.some(s=>s.o===mySlot&&s.st===0)},
  {h:'Take a castle',p:'At a hovel or an enemy castle your minions fight the garrison. When it hits zero, the castle is yours. Take one.',ok:()=>G.castles.filter(c=>c.owner===mySlot).length>=2},
  {h:'Mine souls',p:'Souls are your only currency. Tap a castle behind your lines and switch it from Army to Souls: it stops breeding and makes souls instead. Kills pay a few too.',ok:()=>G.castles.some(c=>c.owner===mySlot&&c.mode)},
- {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. At level 3 a castle can take a path: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
+ {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. The upgrade to level 3 also picks a specialisation: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
  {h:'Research',p:'Tap Research: it draws two cards at once, keep one. Early cards are weak, later ones much stronger.',ok:()=>G.pl[mySlot].rn>0},
- {h:'Towers',p:'In a castle panel, buy towers. A ring of towers shoots anyone who comes near, and you can upgrade it twice.',ok:()=>G.castles.some(c=>c.owner===mySlot&&((c.tl|0)>0||(c.build&&c.build.k===1)))||G.time-CAMP.t0>90},
  {h:'Spells',p:'Both spells are ready. Spies lift the fog for a moment, Horde Boost rallies every soldier you have. Cast one.',ok:()=>G.pl[mySlot].cd.some(v=>v>G.gt)},
  {h:'Stronger demons',p:'Minions are weak. A Spawner castle (a level 3 path) breeds lesser demons, and greater demons from level 5.',ok:()=>myDemons()>=CAMP.d0+3||G.time-CAMP.t0>120},
  {h:'Victory',p:'Gather a big army of demons and take the enemy Throne, the castle under the crowned skull. Your rival wakes up soon.',ok:()=>false}];
@@ -108,7 +107,8 @@ $('#tut-skip').onclick=()=>{if(CAMP)CAMP.tut=false;$('#tut').hidden=true;};
   try{if(window.claude&&typeof claude.use==='function')ROOM=await claude.use('room');}catch(e){ROOM=null;}
   if(ROOM){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Friends in your organization can join from this same page.';
     ROOM.onPeers(renderGameList,()=>{});}
-  else $('#net-note').textContent='Online play turns on when this page runs inside Claude. Bots are always ready.';
+  else if(P2P.ok){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Online play is peer to peer: the host sends each friend an invite code and gets a reply code back.';}
+  else $('#net-note').textContent='This browser cannot do peer-to-peer play. Bots are always ready.';
 })();
 
 function leaveNet(){
@@ -129,10 +129,14 @@ function mkSlots(online){const s=[];for(let i=0;i<8;i++){
 function botName(i,d){const L=kv(()=>LORD_NAMES,null);return(L&&L.length?L[(L.length*8-1-i)%L.length]:'Bot '+(i+1))+' ('+DIFF[d]+')';}
 function slotLabel(s,i){return s.k==='b'?botName(i,s.d):(s.n||'Player');}
 
-$('#b-local').onclick=()=>{leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+$('#b-local').onclick=()=>{$('#p2p-host').hidden=true;leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
   $('#setup-title').textContent='New game';$('#code-box').hidden=true;renderSetup();show('setup');};
 $('#b-host').onclick=async()=>{
-  if(!ROOM)return;leaveNet();
+  if(!ROOM){if(!P2P.ok)return;leaveNet();NET.nr=P2P.host();NET.mode='host';NET.code='P2P';NET.lastSeq={};
+    CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(true),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+    $('#setup-title').textContent='Online lobby';$('#code-box').hidden=true;$('#p2p-host').hidden=false;$('#p2p-list').innerHTML='';
+    NET.unsub.push(NET.nr.onPeers(onHostPeers,()=>{}));renderSetup();show('setup');pushState();return;}
+  $('#p2p-host').hidden=true;leaveNet();
   const code=Array.from({length:4},()=>'ABCDEFGHJKMNPQRSTUVWXYZ'[Math.floor(Math.random()*23)]).join('');
   try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){toastMenu('Could not open a game room. Try again.');return;}
   NET.mode='host';NET.code=code;NET.lastSeq={};
@@ -250,7 +254,33 @@ function renderGameList(){
     const row=document.createElement('div');row.className='game-row';row.appendChild(b);
     const w=document.createElement('button');w.className='watch';w.textContent='Watch';w.setAttribute('aria-label','Watch '+((clean(p.presence.n)||'this')+"'s game"));w.onclick=()=>joinCode(String(p.presence.h),true);row.appendChild(w);box.appendChild(row);}
 }
-$('#b-join').onclick=()=>{leaveNet();$('#join-msg').textContent='';renderGameList();show('join');};
+$('#b-join').onclick=()=>{leaveNet();$('#join-msg').textContent='';$('#room-join').hidden=!ROOM;$('#p2p-join').hidden=!!ROOM||!P2P.ok;$('#p2p-ans').hidden=true;renderGameList();show('join');};
+// ---------- peer-to-peer invites (no ROOM): host side cards, client side connect ----------
+const copyText=async(t,btn)=>{try{await navigator.clipboard.writeText(t);if(btn){const o=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=o,1400);}}catch(e){toast('Select the code and copy it by hand.',2200);}};
+const shareText=async t=>{try{await navigator.share({text:t});}catch(e){}};
+$('#b-invite').onclick=async()=>{
+  const nr=NET.nr;if(NET.mode!=='host'||!nr||!nr.invite)return;const b=$('#b-invite');b.disabled=true;b.textContent='Preparing…';
+  let inv;try{inv=await nr.invite();}catch(e){toast('Could not make an invite. Try again.',2200);b.disabled=false;b.textContent='Create an invite code';return;}
+  b.disabled=false;b.textContent='Create another invite code';
+  const d=document.createElement('div');d.className='inv';
+  d.innerHTML='<b></b><small>1. Send this code to your friend</small><textarea readonly rows="3" aria-label="Invite code"></textarea><div class="duo"><button class="btn" data-copy>Copy</button><button class="btn" data-share hidden>Share</button></div><small>2. Paste the reply code they send back</small><textarea data-reply rows="3" placeholder="Reply code" aria-label="Reply code" spellcheck="false"></textarea><button class="btn primary" data-go>Connect</button><p class="msg" data-st></p>';
+  d.querySelector('b').textContent='Invite '+inv.n;const ta=d.querySelector('textarea');ta.value=inv.code;ta.onclick=()=>ta.select();
+  d.querySelector('[data-copy]').onclick=e=>copyText(inv.code,e.target);const sh=d.querySelector('[data-share]');if(navigator.share){sh.hidden=false;sh.onclick=()=>shareText(inv.code);}
+  const st=d.querySelector('[data-st]'),go=d.querySelector('[data-go]'),rp=d.querySelector('[data-reply]');
+  go.onclick=async()=>{st.textContent='Connecting…';try{await nr.accept(inv.id,rp.value);st.textContent='Waiting for the connection…';}catch(e){st.textContent='That reply code did not work.';}};
+  const t=setInterval(()=>{if(NET.nr!==nr||!d.isConnected){clearInterval(t);return;}if(inv.isOpen()){st.textContent='Connected ✓';go.hidden=true;rp.hidden=true;d.querySelector('.duo').hidden=true;ta.hidden=true;}},500);
+  $('#p2p-list').appendChild(d);};
+$('#b-p2p-copy').onclick=e=>copyText($('#p2p-out').value,e.target);
+if(navigator.share){$('#b-p2p-share').hidden=false;$('#b-p2p-share').onclick=()=>shareText($('#p2p-out').value);}
+$('#b-p2p-join').onclick=async()=>{
+  const msg=$('#join-msg'),text=$('#p2p-in').value;leaveNet();msg.textContent='Preparing your reply…';let r;
+  try{r=await P2P.join(text);}catch(e){msg.textContent='That invite code did not work.';return;}
+  const mine=r.nr;NET.nr=mine;NET.mode='client';NET.code='P2P';NET.seq=0;NET.cmds=[];NET.gid=null;NET.hadHost=false;G=null;PHASE='lobby';NET.spec=false;
+  $('#p2p-out').value=r.answer;$('#p2p-ans').hidden=false;msg.textContent='Send the reply code to the host, then wait here.';
+  r.opened.then(()=>{if(NET.nr!==mine)return;mine.presence({r:'c',n:myName,c:[],spec:0}).catch(()=>{});NET.unsub.push(mine.onPeers(onClientPeers,()=>{}));
+    $('#wait-title').textContent='Online game';$('#wait-slots').innerHTML='';$('#wait-msg').textContent='Waiting for the host…';show('wait');
+    setTimeout(()=>{if(NET.nr===mine&&!NET.hadHost){leaveNet();show('join');msg.textContent='The host did not answer.';}},12000);});
+  setTimeout(()=>{if(NET.nr===mine&&!r.isOpen()){leaveNet();msg.textContent='Timed out waiting for the host to enter your reply.';}},240000);};
 $('#b-code').onclick=()=>joinCode($('#code-in').value);
 $('#code-in').addEventListener('keydown',e=>{if(e.key==='Enter')joinCode(e.target.value);});
 async function joinCode(code,spec){

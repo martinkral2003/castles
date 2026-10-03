@@ -73,6 +73,11 @@ button{cursor:pointer}
 .code-box b{font-family:var(--title);font-weight:700;font-size:2.1rem;letter-spacing:.16em;color:#ffd9a8;text-shadow:0 0 14px rgba(255,100,40,.45)}
 .code-box small{color:var(--muted);font-size:.92rem;flex-basis:100%;font-weight:500}
 .code-box[hidden]{display:none}
+#p2p-host[hidden],#p2p-join[hidden],#p2p-ans[hidden],#room-join[hidden]{display:none}
+#p2p-host,#p2p-join,#p2p-ans,#room-join{display:flex;flex-direction:column;gap:10px}
+textarea{width:100%;box-sizing:border-box;resize:none;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#171110;color:var(--ink);font:12px/1.35 ui-monospace,Consolas,monospace;word-break:break-all}
+.inv{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,#251b18,#1c1513)}
+.inv>b{font-family:var(--title);font-size:1.05rem;color:#ffd9a8}.inv small{color:var(--muted);font-weight:600}.inv .msg{min-height:0;text-align:left}
 .slots{display:flex;flex-direction:column;gap:8px}
 .slot{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;background:linear-gradient(180deg,#251b18,#1c1513);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:54px;box-shadow:inset 0 1px 0 rgba(255,214,180,.04)}
 .slot.off{opacity:.5}
@@ -464,7 +469,7 @@ svg.gl{width:1em;height:1em;fill:currentColor;flex:none;display:inline-block}
     <button class="btn daily" id="b-daily"><span>Daily challenge</span><small>Same map for everyone today</small></button>
     <button class="btn" id="b-local">Play against bots</button>
     <div class="duo"><button class="btn" id="b-host" disabled>Host online</button><button class="btn" id="b-join" disabled>Join online</button></div>
-    <p class="note" id="net-note">Connecting to the room…</p>
+    <p class="note" id="net-note">Checking online play…</p>
     <button class="btn" id="b-replay" hidden>Watch last replay</button>
     <button class="link" id="b-help">How to play</button>
   </div>
@@ -474,6 +479,12 @@ svg.gl{width:1em;height:1em;fill:currentColor;flex:none;display:inline-block}
   <div class="bar"><button class="icon" data-back aria-label="Back">‹</button><h2 id="setup-title">New game</h2></div>
   <div class="wrap">
     <div class="code-box" id="code-box" hidden>Game code <b id="code"></b><small>Friends open this page, tap Join online, and pick your game.</small></div>
+    <div id="p2p-host" hidden>
+      <h3 class="sh">Invite players</h3>
+      <p class="note">Peer to peer, no server: make an invite code for each friend, send it to them, then paste the reply code they send back.</p>
+      <div id="p2p-list"></div>
+      <button class="btn" id="b-invite">Create an invite code</button>
+    </div>
     <h3 class="sh">Lords</h3>
     <div class="slots" id="slots"></div>
     <h3 class="sh">Battlefield</h3>
@@ -494,8 +505,18 @@ svg.gl{width:1em;height:1em;fill:currentColor;flex:none;display:inline-block}
 <section id="s-join" class="screen">
   <div class="bar"><button class="icon" data-back aria-label="Back">‹</button><h2>Join a game</h2></div>
   <div class="wrap">
-    <div class="games" id="games"></div>
-    <div class="row"><input id="code-in" maxlength="4" placeholder="CODE" autocomplete="off" aria-label="Game code"><button class="btn primary" id="b-code">Join</button></div>
+    <div id="room-join">    <div class="games" id="games"></div>
+    <div class="row"><input id="code-in" maxlength="4" placeholder="CODE" autocomplete="off" aria-label="Game code"><button class="btn primary" id="b-code">Join</button></div></div>
+    <div id="p2p-join" hidden>
+      <p class="note">Ask the host for an invite code, paste it here, then send the reply code back to the host.</p>
+      <textarea id="p2p-in" rows="4" placeholder="Paste the host's invite code" aria-label="Invite code" spellcheck="false"></textarea>
+      <button class="btn primary" id="b-p2p-join">Connect</button>
+      <div id="p2p-ans" hidden>
+        <p class="note">Your reply code. Send it to the host and wait on this screen.</p>
+        <textarea id="p2p-out" rows="4" readonly aria-label="Reply code"></textarea>
+        <div class="duo"><button class="btn" id="b-p2p-copy">Copy reply</button><button class="btn" id="b-p2p-share" hidden>Share</button></div>
+      </div>
+    </div>
     <p class="msg" id="join-msg"></p>
   </div>
 </section>
@@ -576,14 +597,14 @@ const SPEED_S=25,ENGAGE=26,MELEE=7,HIT_F=0.36,CD_F=0.9,HIT_W=0.155,CD_W=1.25,FIR
 const LV=[null,{cap:45,g:.35},{cap:90,g:.6},{cap:150,g:.95}]; // three levels; the Throne holds 40% more and breeds 25% faster than a castle of its level
 const lvg=c=>LV[c.lv].g*(c.capital>=0?1.25:1);
 const LVCOST=[0,70,160];let GG=null;
-const TOWER_COST=[60,110,170],TOWER_T=8,TW_R=[0,80,90,100],TW_FIRE=[0,5,9,14];
-const WALL_MUL=TUNE.WALL??0.55,SOUL_YIELD=TUNE.SY??3.0,KILL_V=TUNE.KV??0.8,KILL_BACK=0.5,KILL_CAP=TUNE.KC??45,KILL_WIN=10,CATCHUP=0,SPRING_GUARD=30,LORD_R=85,LORD_CD=40,LORD_HEAL=0.4;
+const TW_R=[0,80,90,100],TW_FIRE=[0,5,9,14].map(v=>v*(TUNE.TWS??0.6));
+const WALL_MUL=TUNE.WALL??0.55,SOUL_YIELD=TUNE.SY??3.0,KILL_V=TUNE.KV??0.45,KILL_BACK=0.5,KILL_CAP=TUNE.KC??30,KILL_WIN=10,CATCHUP=0,SPRING_GUARD=30,LORD_R=85,LORD_CD=40,LORD_HEAL=0.4;
 const PATHS=[null,
  {name:'Soul Well',desc:'Gathers souls on its own; Souls mode yields 50% more; breeds 30% slower'},
  {name:'Citadel',desc:'Walled, defence ×1.6, holds 25% more, sees far, cheaper towers, hires a lord. Not for the Throne'},
  {name:'Spawner',desc:'Breeds 40% faster and is the only castle that makes lesser and greater demons'}];
-const PATH_COST=120,PATH_T=15,LEVEL_T=12;
-const WONDER_COST=TUNE.WG??650,WONDER_T=45,WONDER_STAGES=5,WONDER_HOLD=TUNE.WH??240;
+const PATH_T=15,LEVEL_T=12,UP_SCALE=TUNE.UCS??0.1;
+const WONDER_COST=TUNE.WG??900,WONDER_T=45,WONDER_STAGES=5,WONDER_HOLD=TUNE.WH??240;
 // sup = supply weight (army cap and castle capacity), gcost = breeding it eats, req = Spawner level needed (the lord is hired, never bred)
 const UNIT=[{name:'Minion',short:'Minion',hp:.75,spd:1,dmg:.27,wall:1,sup:1,gcost:1,req:1},
  {name:'Lesser demon',short:'Lesser',hp:1.45,spd:1,dmg:.4,wall:1.1,sup:2,gcost:2.2,req:3},
@@ -598,7 +619,7 @@ const SPELLS=[
  {id:1,name:'Spies',desc:'Reveals a circle of the map for 20 s',cost:20,cd:25,kind:'point',r:200,dur:20}];
 const MAGIC_KEY=['horde','spy'];
 // card power: a pick's strength depends on how many cards you have drawn so far (weak early, strong late); cards[id] sums the powers, capped at max
-const TIER_MUL=[.5,1,1.8],tierOf=rn=>rn<3?0:rn<7?1:2;
+const TIER_MUL=[.7,1,1.25],tierOf=rn=>rn<3?0:rn<7?1:2;
 const CARDS=((pc,mc,on)=>[['grow','Fecund Pits','Troops breed faster','soul',3,n=>1+.15*n,pc(15)],
  ['tithe','Blood Tithe','More souls from kills and Souls mode','soul',3,n=>1+.15*n,pc(15)],
  ['well','Deep Wells','More souls from Soul Wells and Springs','soul',3,n=>1+.4*n,pc(40)],
@@ -773,10 +794,13 @@ function defMul(G,c){let d=(c.hill?1.3:1)*garrisonTough(G,c)*(1+0.06*(c.tl|0));
   if(c.owner===NEUTRAL)return d*1.12*(c.nw?1.2:1);
   d*=1.35*mod(G,c.owner,'def');if(c.capital>=0)d*=1.25;if(c.path===2)d*=1.6;if(c.lords&&c.lords.length)d*=1.15;return d;}
 const thrift=(G,s)=>mod(G,s,'thrift');
-function upCost(G,s,c){return c&&c.lv<maxLv(c)?Math.round(LVCOST[c.lv]*thrift(G,s)):Infinity;}
-function pathCost(G,s){return Math.round(PATH_COST*thrift(G,s));}
-function towerCost(G,s,c){return c&&(c.tl|0)<3?Math.round(TOWER_COST[c.tl|0]*thrift(G,s)*(c.path===2?0.7:1)):Infinity;}
-function researchCost(G,s){return Math.round(40*Math.pow(1.12,G.pl[s].rn));}
+const owned=(G,s)=>{let n=0;for(const c of G.castles)if(c.owner===s)n++;return n;};
+// each castle beyond the first makes every upgrade 10% dearer
+function upCost(G,s,c){return c&&c.lv<maxLv(c)?Math.round(LVCOST[c.lv]*(1+UP_SCALE*Math.max(0,owned(G,s)-1))*thrift(G,s)):Infinity;}
+// towers come with the castle: one level per castle level above 1, and a Citadel adds one
+function syncTowers(c){c.tl=c.kind==='m'?0:Math.min(3,Math.max(0,c.lv-1)+(c.path===2?1:0));}
+const lootOf=c=>Math.round(5*c.lv+(isWalled(c)?40:0));
+function researchCost(G,s){return Math.round(40*Math.pow(1.15,G.pl[s].rn));}
 function lordPrice(G,s){return Math.round((140+70*G.pl[s].lh)*mod(G,s,'lcost'));}
 function spellCost(G,s,id){return Math.round(SPELLS[id].cost*(1-[.2,.15][id]*mod(G,s,MAGIC_KEY[id])));}
 function spellCd(G,s,id){return SPELLS[id].cd;}
@@ -839,12 +863,11 @@ function setPour(G,slot,from,to){const p=G.pl[slot];
   if(!p.pour||p.pour.from!==from||p.pour.to!==to){if(p.pour)releaseMuster(G,slot,p.pour.from);p.pour={from,to,g:G.gid++,lt:0};p.pourA=0;p.pourH=0;}}
 function buildWonder(G,s){const p=G.pl[s];if(G.opts&&!G.opts.wonder)return false;if(p.out||G.over||p.wb>=0||p.ws>=WONDER_STAGES)return false;const c=G.castles[G.capIdx[s]];if(!c||c.owner!==s||c.lv<3||p.souls<WONDER_COST)return false;
   p.souls-=WONDER_COST;p.wb=0;ev(G,{t:'wonder',s,stage:p.ws});return true;}
-function choosePath(G,slot,ci,pth){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build||c.path||c.kind==='m'||c.lv<3||!(pth>=1&&pth<=3)||(pth===2&&c.capital>=0))return false;const p=G.pl[slot],cost=pathCost(G,slot);if(p.souls<cost)return false;
-  p.souls-=cost;c.build={k:20+pth,t:0,dur:PATH_T};ev(G,{t:'up',c:ci});return true;}
-function upgrade(G,slot,ci){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build)return false;const cost=upCost(G,slot,c),p=G.pl[slot];if(!(cost<=p.souls))return false;
-  p.souls-=cost;c.build={k:0,t:0,dur:LEVEL_T};ev(G,{t:'up',c:ci});return true;}
-function fortify(G,slot,ci){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build||(c.tl|0)>=3)return false;const cost=towerCost(G,slot,c),p=G.pl[slot];if(!(cost<=p.souls))return false;
-  p.souls-=cost;c.build={k:1,t:0,dur:TOWER_T};ev(G,{t:'up',c:ci});return true;}
+// upgrade a castle one level; the last level (3) is also where it specialises (path 1 Soul Well, 2 Citadel, 3 Spawner; the Throne cannot be a Citadel)
+function upgrade(G,slot,ci,pth){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build||c.lv>=maxLv(c))return false;
+  const last=c.lv===maxLv(c)-1&&c.kind!=='m';if(last&&(!(pth>=1&&pth<=3)||(pth===2&&c.capital>=0)))return false;
+  const cost=upCost(G,slot,c),p=G.pl[slot];if(!(cost<=p.souls))return false;
+  p.souls-=cost;c.build=last?{k:20+pth,t:0,dur:PATH_T}:{k:0,t:0,dur:LEVEL_T};ev(G,{t:'up',c:ci});return true;}
 // ---------- research cards ----------
 function hasLordSource(G,s){return G.castles.some(k=>k.owner===s&&(k.path===2||k.lords.length>0||(k.build&&k.build.k===22)))||G.sol.some(x=>x.o===s&&x.lord);}
 function cardOk(G,s,id){const p=G.pl[s],c=CARDS[id];if((p.cards[id]||0)>=c.max-0.01)return false;if(c.max===1&&p.rn<4)return false;if(c.tag==='lord')return hasLordSource(G,s);return true;}
@@ -900,7 +923,7 @@ function step(G,rdt){
     const busy=c.assault>0;
     if(c.owner===NEUTRAL){if(!busy){c.idle+=dt;if(c.idle>NEUT_IDLE&&c.size<c.base)addT(c,0,Math.min(c.base-c.size,(c.lv>=3?2:c.kind==='m'?1:1.2)*dt));}else c.idle=0;return;}
     const p=G.pl[c.owner];
-    if(c.build){c.build.t+=dt;if(c.build.t>=c.build.dur){const k=c.build.k;if(k>=20)c.path=k-20;else if(k===1)c.tl=Math.min(3,(c.tl|0)+1);else c.lv=Math.min(maxLv(c),c.lv+1);c.build=null;ev(G,{t:'built',c:i});}}
+    if(c.build){c.build.t+=dt;if(c.build.t>=c.build.dur){const k=c.build.k;if(k>=20){c.path=k-20;c.lv=maxLv(c);}else c.lv=Math.min(maxLv(c),c.lv+1);syncTowers(c);c.build=null;ev(G,{t:'built',c:i});}}
     const cap=capOf(c),ld=load(c);
     if(ld>cap)scaleT(c,c.size*Math.max(cap,ld-5*dt)/ld);
     else if(!c.build&&!busy&&!c.mode&&tot[c.owner]<caps[c.owner]){const g=Math.min(cap-ld,growRate(G,c)*dt);if(g>0)breed(G,c,g);}
@@ -1006,13 +1029,14 @@ function capture(G,i,by){
   if(G.pl[by].out)return;
   const oldLv=c.lv,wasWalled=isWalled(c);
   for(const L of c.lords)lordDie(G,L,c.x,c.y);c.lords=[];
-  c.owner=by;c.route=-1;c.build=null;c.mode=0;c.capital=-1;c.size=0;c.u=[0,0,0];c.fire=0;c.path=0;c.vp=0;c.lordCd=0;c.tl=Math.max(0,(c.tl|0)-1);c.tf=0;
+  c.owner=by;c.route=-1;c.build=null;c.mode=0;c.capital=-1;c.size=0;c.u=[0,0,0];c.fire=0;c.path=0;c.vp=0;c.lordCd=0;c.tf=0;
   if(c.kind!=='m'){c.lv=Math.max(1,c.lv-1);if(c.kind==='v'||c.kind==='f')c.kind='c';c.nw=0;}
+  syncTowers(c);
   // the victors march in
   const T=teamOf(G,by);for(const s of G.sol)if(s.hp>0&&s.st===2&&s.to===i&&teamOf(G,s.o)===T)enterCastle(G,s,c);
   // muster blocks of the old owner outside this castle are released
   if(prev!==NEUTRAL)for(const s of G.sol)if(s.st===3&&s.from===i)s.st=0;
-  const loot=Math.round(8*oldLv+(wasWalled?60:0));gainSouls(G.pl[by],loot);G.pl[by].taken++;ev(G,{t:'soul',x:c.x,y:c.y,s:by,n:loot,why:2});
+  const loot=Math.round(5*oldLv+(wasWalled?40:0));gainSouls(G.pl[by],loot);G.pl[by].taken++;ev(G,{t:'soul',x:c.x,y:c.y,s:by,n:loot,why:2});
   ev(G,{t:'cap',c:i,by,loot,drop:oldLv>c.lv});
   if(wasCap>=0&&prev!==NEUTRAL)eliminate(G,prev,by);
   supply(G);
@@ -1081,36 +1105,29 @@ function botThink(G,slot){
     {const w=(capped||wf)&&threat[capI]===0&&!capC.assault&&capC.size>capOf(capC)*0.75?1:0;if(capC.mode!==w)setMode(G,slot,capI,w);}
     const ctx={wells:mine.filter(ci=>C[ci].path===1||C[ci].kind==='m').length,souls,capped,towers:mine.some(ci=>C[ci].tl>0),walled:mine.some(ci=>G.adj[ci].some(({to})=>!isMine(to)&&isWalled(C[to])))};
     const buy=(cost,f)=>{if(p.souls-saving>=cost){if(f())return true;}else saving=Math.max(saving,cost);return false;};
-    // 1. the Throne's path first (Spawner, or Soul Well for the Harvester), then its level: army cap, growth, Hellgate requirement
-    if(capC.owner===slot&&!capC.build&&!capC.path&&capC.lv>=3&&!wf)buy(pathCost(G,slot),()=>choosePath(G,slot,capI,pe===3?1:3));
-    if(capC.owner===slot&&!capC.build&&capC.lv<maxLv(capC)&&(tot>cap*0.6||(capC.lv<3&&(G.gt>200||wf))||wf)&&(capC.path||capC.lv<3||wf))buy(upCost(G,slot,capC),()=>upgrade(G,slot,capI));
+    // 1. the Throne's levels first (army cap, growth, Hellgate requirement); the last one picks Spawner, or Soul Well for the Harvester
+    const hasCit=mine.some(ci=>C[ci].path===2||(C[ci].build&&C[ci].build.k===22));
+    const pathFor=ci=>{const c=C[ci];if(c.capital>=0)return pe===3?1:3;let pth=c.mode||fd[ci]>=2?1:[3,3,2,2][pe];if(!hasCit&&pth!==1&&pe!==3)pth=2;return pth;};
+    const up=ci=>upgrade(G,slot,ci,C[ci].lv===2&&C[ci].kind!=='m'?pathFor(ci):0);
+    if(capC.owner===slot&&!capC.build&&capC.lv<maxLv(capC)&&(tot>cap*0.6||G.gt>150||wf))buy(upCost(G,slot,capC),()=>up(capI));
     // 2. Hellgate for the Harvester, the wonder-first sims and stuck bots
     const hg=capC.owner===slot&&capC.lv>=3&&p.wb<0&&p.ws<WONDER_STAGES&&(G.opts.wonder!==0)&&hgo;
     if(hg)buy(WONDER_COST,()=>buildWonder(G,slot));
     // 3. research cards
     if(!SL.noRes){if(p.offer)pickCard(G,slot,botCard(G,slot,pe,ctx));
       if(!p.offer){const rc=researchCost(G,slot)+(pe===1?20:0);if(p.souls-saving>=rc){if(drawResearch(G,slot))pickCard(G,slot,botCard(G,slot,pe,ctx));}else if(!wf)saving=Math.max(saving,rc*0.5);}}
-    // 4. paths: Soul Wells in the rear, a Citadel for the lord, Spawners at the front
-    if(!wf){const hasCit=mine.some(ci=>C[ci].path===2||(C[ci].build&&C[ci].build.k===22));
-      for(const ci of mine){const c=C[ci];if(c.path||c.build||c.lv<3||c.kind==='m'||c.capital>=0)continue;
-        let pth=c.mode||fd[ci]>=2?1:[3,3,2,2][pe];if(!hasCit&&pth!==1&&pe!==3)pth=2;
-        if(buy(pathCost(G,slot),()=>choosePath(G,slot,ci,pth)))break;}}
     // 5. lords from idle Citadels
     if(!noArmy&&!wf)for(const ci of mine){const c=C[ci];if(c.path!==2)continue;const ls=lordStatus(G,slot,ci);if(ls.can||ls.why.startsWith('Needs')){buy(ls.price,()=>hireLord(G,slot,ci));break;}}
     // 6. other castle levels: Souls-mode castles earn more, front castles hold more
     if(!wf){let best=-1,bs=0;
       for(const ci of mine){const c=C[ci];if(c.build||c.lv>=maxLv(c)||c.capital>=0||threat[ci]>0)continue;
         const sc=(c.kind==='m'?2.5:1)*(c.mode?(pe===3?1.8:1.3):fd[ci]<=1?1.1:0.7)/(c.lv+1);if(sc>bs){bs=sc;best=ci;}}
-      if(best>=0)buy(upCost(G,slot,C[best])+20,()=>upgrade(G,slot,best));}
-    // 7. towers on the castles that face the enemy (the Turtle likes them most)
-    if(!wf&&!noArmy&&p.souls-saving>(pe===2?60:140)&&R()<(pe===2?0.7:0.3)){let best=-1,bs=-1;
-      for(const ci of mine){const c=C[ci];if(c.build||(c.tl|0)>=3||c.size<8||(fd[ci]>1&&!threat[ci]))continue;const sc=(3-(c.tl|0))*(1+(threat[ci]>0?1:0)+(c.capital>=0?0.5:0))+R();if(sc>bs){bs=sc;best=ci;}}
-      if(best>=0)fortify(G,slot,best);}
+      if(best>=0)buy(upCost(G,slot,C[best])+20,()=>up(best));}
     // surplus: never sit on a big hoard
     if(p.souls-saving>400&&diff>0){let spent=false;
       if(!SL.noRes&&!p.offer&&drawResearch(G,slot)){pickCard(G,slot,botCard(G,slot,pe,ctx));spent=true;}
       if(!spent&&capC.owner===slot&&capC.lv>=3&&p.wb<0&&p.ws<WONDER_STAGES&&p.souls>=WONDER_COST&&G.opts.wonder!==0){buildWonder(G,slot);spent=true;}
-      if(!spent)for(const ci of mine){const c=C[ci];if(!c.build&&c.lv<maxLv(c)&&threat[ci]===0&&p.souls>=upCost(G,slot,c)){upgrade(G,slot,ci);break;}}}
+      if(!spent)for(const ci of mine){const c=C[ci];if(!c.build&&c.lv<maxLv(c)&&threat[ci]===0&&p.souls>=upCost(G,slot,c)){up(ci);break;}}}
   }
   // spells: Horde Boost when many of our soldiers fight, Spies on fogged ground
   if(diff>=1){const res=diff===2?5:40;
@@ -1215,11 +1232,11 @@ function decodeInto(G,g){GG=G;const C=G.castles;
   G.time=g.tm||G.time;
   if(g.w&&!G.over){G.over=true;G.winner=g.w==='-'?null:g.w;G.winBy=g.wb||'';}
 }
-if(typeof module!=='undefined')module.exports={COLORS,NEUTRAL,LV,LVCOST,maxLv,UNIT,NU,SPAWN_MIX,PATHS,PATH_COST,PATH_T,LEVEL_T,CARDS,CARD_ID,TIER_MUL,tierOf,SPELLS,LORD_NAMES,PERS,MAPTYPES,MAPTHEME,MAPGEN,
-  WONDER_COST,WONDER_STAGES,WONDER_T,WONDER_HOLD,TOWER_COST,TOWER_T,TW_R,TW_FIRE,SOUL_YIELD,KILL_V,KILL_BACK,KILL_CAP,SPRING_GUARD,HORDE_DMG,HORDE_SPD,LORD_R,LORD_CD,MAX_SOL,SPEED_S,ROUTE_IV,ROUTE_PKT,FIRE,HIT_W,CD_W,DAY_LEN,
+if(typeof module!=='undefined')module.exports={COLORS,NEUTRAL,LV,LVCOST,maxLv,UNIT,NU,SPAWN_MIX,PATHS,PATH_T,LEVEL_T,CARDS,CARD_ID,TIER_MUL,tierOf,SPELLS,LORD_NAMES,PERS,MAPTYPES,MAPTHEME,MAPGEN,
+  WONDER_COST,WONDER_STAGES,WONDER_T,WONDER_HOLD,TW_R,TW_FIRE,SOUL_YIELD,KILL_V,KILL_BACK,KILL_CAP,SPRING_GUARD,HORDE_DMG,HORDE_SPD,LORD_R,LORD_CD,MAX_SOL,SPEED_S,ROUTE_IV,ROUTE_PKT,FIRE,HIT_W,CD_W,DAY_LEN,
   genMap,newGame,step,encode,decodeInto,decSol,encSol,teamOf,aliveTeams,checkWin,capture,eliminate,supply,mkRng,segX,
-  kill,squad,setRoute,upgrade,setMode,drawResearch,useSpell,setMix,fortify,choosePath,pickCard,buildWonder,hireLord,dispatch,setPour,
-  capOf,load,armyCap,musterCap,growRate,soulRate,passiveRate,modeRate,killSouls,defMul,isWalled,unitOk,upCost,pathCost,towerCost,towerFire,towerRange,researchCost,
+  kill,squad,setRoute,upgrade,setMode,drawResearch,useSpell,setMix,pickCard,buildWonder,hireLord,dispatch,setPour,
+  capOf,load,armyCap,musterCap,growRate,soulRate,passiveRate,modeRate,killSouls,defMul,isWalled,unitOk,upCost,lootOf,syncTowers,towerFire,towerRange,researchCost,
   cardCount,cardEffect,cardOk,recomputeMods,mod,spellCost,spellCd,spellR,spellDurOf,lordStatus,lordPrice,lordOf,lordMax,canLord,castleVision,nightLevel,fieldCap,needToTake,botThink,botView,garrisonFire};
 
 // ===== Brimfall illustrated art: castles, castle towers, hovels, bone fortresses, soul springs, Hellgate, banners, sigil, terrain =====
@@ -2049,6 +2066,70 @@ function warmUnits(cols,levels){UNITART.warm(cols,levels);}
 
 </script>
 <script>
+// ===== Brimfall serverless multiplayer: WebRTC data channels, star topology, invite/reply codes instead of a signalling server =====
+// Works from any static host (GitHub Pages): the host makes one invite code per friend, the friend answers with a reply code, the host pastes it.
+// The adapter has the same shape as the claude.ai room API the game code was written against: a room with presence(patch), onPeers(cb), peers(), leave().
+// Presence is merged key by key and relayed by the host to everyone, so `{r:'h',L,g}` (host) and `{r:'c',n,c,p,pg}` (clients) behave as before.
+const P2P=(()=>{
+  const ok=typeof RTCPeerConnection!=='undefined';
+  const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'}]}; // only a public STUN lookup; no game data touches it
+  const b64=u=>{let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');};
+  const unb64=t=>{t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';const s=atob(t),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;};
+  async function pack(o){const s=JSON.stringify(o);
+    try{if(typeof CompressionStream!=='undefined'){const z=new Blob([s]).stream().pipeThrough(new CompressionStream('deflate-raw'));return'z'+b64(new Uint8Array(await new Response(z).arrayBuffer()));}}catch(e){}
+    return'p'+b64(new TextEncoder().encode(s));}
+  async function unpack(t){t=String(t||'').replace(/\s+/g,'');if(t.length<20)throw new Error('empty');const k=t[0],u=unb64(t.slice(1));
+    if(k==='z'){const z=new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(z).text());}
+    return JSON.parse(new TextDecoder().decode(u));}
+  const gathered=pc=>new Promise(res=>{if(pc.iceGatheringState==='complete')return res();
+    const f=()=>{if(pc.iceGatheringState==='complete'){pc.removeEventListener('icegatheringstatechange',f);res();}};pc.addEventListener('icegatheringstatechange',f);setTimeout(res,5000);});
+  const send=(dc,m)=>{if(dc&&dc.readyState==='open'){try{dc.send(JSON.stringify(m));}catch(e){}}};
+  // ----- host room
+  function host(){
+    const me={id:'host',presence:{}},peers=new Map(),subs=new Set();let n=0;
+    const list=()=>[{peer:'host',presence:me.presence,sameTab:true,isMe:true},...[...peers.values()].filter(c=>c.open).map(c=>({peer:c.id,presence:c.presence,sameTab:false,isMe:false}))];
+    const emit=()=>{const L=list();subs.forEach(f=>{try{f({peers:L});}catch(e){console.error(e);}});};
+    const bcast=(m,except)=>{for(const c of peers.values())if(c.open&&c!==except)send(c.dc,m);};
+    const nr={
+      presence(o){Object.assign(me.presence,o);bcast({t:'pr',id:'host',p:o});return Promise.resolve();},
+      onPeers(cb){subs.add(cb);setTimeout(()=>cb({peers:list()}),0);return()=>subs.delete(cb);},
+      peers:list,
+      leave(){for(const c of peers.values()){try{c.pc.close();}catch(e){}}peers.clear();subs.clear();},
+      isOpen:id=>{const c=peers.get(id);return !!(c&&c.open);},
+      forget(id){const c=peers.get(id);if(c){try{c.pc.close();}catch(e){}peers.delete(id);emit();}},
+      async invite(){const id='c'+(++n),pc=new RTCPeerConnection(ICE),dc=pc.createDataChannel('bf'),c={id,pc,dc,presence:{},open:false};peers.set(id,c);
+        const drop=()=>{if(peers.get(id)===c){const was=c.open;peers.delete(id);c.open=false;if(was){bcast({t:'gone',id});}emit();}};
+        dc.onopen=()=>{c.open=true;const all={host:me.presence};for(const o of peers.values())if(o!==c&&o.open)all[o.id]=o.presence;send(dc,{t:'hello',id,all});emit();};
+        dc.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}if(m&&m.t==='pr'&&m.p&&typeof m.p==='object'){Object.assign(c.presence,m.p);bcast({t:'pr',id,p:m.p},c);emit();}};
+        dc.onclose=drop;pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'||pc.connectionState==='closed')drop();};
+        await pc.setLocalDescription(await pc.createOffer());await gathered(pc);
+        return{id,n,code:await pack({t:'o',d:pc.localDescription.sdp}),isOpen:()=>c.open};},
+      async accept(id,text){const c=peers.get(id);if(!c)throw new Error('gone');const m=await unpack(text);if(m.t!=='a')throw new Error('not a reply');await c.pc.setRemoteDescription({type:'answer',sdp:m.d});}
+    };
+    return nr;}
+  // ----- client room: returns {nr, answer, opened, isOpen}
+  async function join(text){
+    const m=await unpack(text);if(m.t!=='o')throw new Error('not an invite');
+    const pc=new RTCPeerConnection(ICE),me={id:null,presence:{}},others={},subs=new Set();let dc=null,open=false,hostGone=false,resolve;
+    const opened=new Promise(r=>{resolve=r;});
+    const list=()=>{const L=[{peer:me.id,presence:me.presence,sameTab:true,isMe:true}];if(!hostGone&&others.host)L.push({peer:'host',presence:others.host,sameTab:false,isMe:false});
+      for(const k in others)if(k!=='host')L.push({peer:k,presence:others[k],sameTab:false,isMe:false});return L;};
+    const emit=()=>{const L=list();subs.forEach(f=>{try{f({peers:L});}catch(e){console.error(e);}});};
+    pc.ondatachannel=e=>{dc=e.channel;
+      dc.onmessage=ev=>{let q;try{q=JSON.parse(ev.data);}catch(_){return;}if(!q)return;
+        if(q.t==='hello'){me.id=q.id;for(const k in q.all)others[k]=q.all[k]||{};open=true;resolve();emit();}
+        else if(q.t==='pr'&&q.p){others[q.id]=Object.assign(others[q.id]||{},q.p);emit();}
+        else if(q.t==='gone'){delete others[q.id];emit();}};
+      dc.onclose=()=>{hostGone=true;open=false;emit();};};
+    pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'||pc.connectionState==='closed'){hostGone=true;open=false;emit();}};
+    await pc.setRemoteDescription({type:'offer',sdp:m.d});await pc.setLocalDescription(await pc.createAnswer());await gathered(pc);
+    const answer=await pack({t:'a',d:pc.localDescription.sdp});
+    const nr={presence(o){Object.assign(me.presence,o);send(dc,{t:'pr',p:o});return Promise.resolve();},
+      onPeers(cb){subs.add(cb);setTimeout(()=>cb({peers:list()}),0);return()=>subs.delete(cb);},peers:list,leave(){try{pc.close();}catch(e){}subs.clear();}};
+    return{nr,answer,opened,isOpen:()=>open};}
+  return{ok,host,join};
+})();
+
 // ===== Brimfall UI + networking =====
 const $=s=>document.querySelector(s);
 const TEAMS=['Solo','Team A','Team B','Team C','Team D'];
@@ -2082,9 +2163,9 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
 <li><b>Kills</b>: every enemy soldier you kill pays a few souls, and the loser gets a little back, so even a lost fight is not wasted. Payouts are capped, so one huge battle cannot decide the game.</li>
 <li><b>Soul springs</b> (placed fairly between rivals and guarded by neutrals) and ${pn(1)}s trickle souls on their own; captured castles pay loot.</li></ul></section>
 <section><h4>Spend souls on</h4><ul>
-<li><b>Levels</b>: three of them, more room and faster breeding each. Level 3 unlocks a path.</li>
-<li><b>Paths</b> at level 3, permanent: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser and, rarely, greater demons).</li>
-<li><b>Towers</b>: one purchase raises a ring of towers round a castle that shoot anything nearby. Upgrade them up to level 3.</li>
+<li><b>Levels</b>: three of them, more room, faster breeding and stronger towers each. Every castle you own makes upgrades 10% dearer.</li>
+<li><b>Specialisation</b>: the level 3 upgrade is also where a castle picks its role, permanently: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser and, rarely, greater demons).</li>
+<li><b>Towers</b> grow with the castle: every level above 1 adds a ring of towers that shoot nearby enemies, and a Citadel gets one more.</li>
 <li><b>Research</b>: one tap draws two cards and you keep one. Early cards are weak, later ones much stronger, and each draw costs a little more.</li>
 <li><b>Spells</b>: both are ready from the start: ${spells}. Cards make them stronger.</li>
 <li><b>Lords</b>: each ${pn(2)} hires one lord, a huge named demon whose aura drives nearby troops. Turn on the Lord chip and he leads your next big block.</li></ul></section>
@@ -2105,7 +2186,7 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
 <section><h4>Fog, night, terrain</h4><p>You only see around your castles and troops, and less under the blood moon. Cross lava at bridges and ridges at passes; the ice of Cocytus can be walked anywhere.</p></section>
 <section><h4>Victory</h4><ul>
 <li><b>Conquest</b>: take every rival Throne.</li>
-<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,650)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
+<li><b>The Hellgate</b>: with your Throne at level 3, build ${kv(()=>WONDER_STAGES,5)} stages of ${kv(()=>WONDER_COST,900)} souls, then hold your Throne for ${Math.round(kv(()=>WONDER_HOLD,240)/60)} minutes. Everyone is warned, and attacks on your Throne roll the timer back.</li></ul></section></div>
 <button class="btn primary" data-a="ok">Got it</button>`,{ok:closeOv});};
 
 // ---------- campaign ----------
@@ -2141,9 +2222,8 @@ const TUT=[
  {h:'Gather a horde',p:'Close the panel. Hold your finger on a road leading out of your castle: minions gather at the gate. Let go and they march.',ok:()=>G.sol.some(s=>s.o===mySlot&&s.st===0)},
  {h:'Take a castle',p:'At a hovel or an enemy castle your minions fight the garrison. When it hits zero, the castle is yours. Take one.',ok:()=>G.castles.filter(c=>c.owner===mySlot).length>=2},
  {h:'Mine souls',p:'Souls are your only currency. Tap a castle behind your lines and switch it from Army to Souls: it stops breeding and makes souls instead. Kills pay a few too.',ok:()=>G.castles.some(c=>c.owner===mySlot&&c.mode)},
- {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. At level 3 a castle can take a path: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
+ {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. The upgrade to level 3 also picks a specialisation: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
  {h:'Research',p:'Tap Research: it draws two cards at once, keep one. Early cards are weak, later ones much stronger.',ok:()=>G.pl[mySlot].rn>0},
- {h:'Towers',p:'In a castle panel, buy towers. A ring of towers shoots anyone who comes near, and you can upgrade it twice.',ok:()=>G.castles.some(c=>c.owner===mySlot&&((c.tl|0)>0||(c.build&&c.build.k===1)))||G.time-CAMP.t0>90},
  {h:'Spells',p:'Both spells are ready. Spies lift the fog for a moment, Horde Boost rallies every soldier you have. Cast one.',ok:()=>G.pl[mySlot].cd.some(v=>v>G.gt)},
  {h:'Stronger demons',p:'Minions are weak. A Spawner castle (a level 3 path) breeds lesser demons, and greater demons from level 5.',ok:()=>myDemons()>=CAMP.d0+3||G.time-CAMP.t0>120},
  {h:'Victory',p:'Gather a big army of demons and take the enemy Throne, the castle under the crowned skull. Your rival wakes up soon.',ok:()=>false}];
@@ -2159,7 +2239,8 @@ $('#tut-skip').onclick=()=>{if(CAMP)CAMP.tut=false;$('#tut').hidden=true;};
   try{if(window.claude&&typeof claude.use==='function')ROOM=await claude.use('room');}catch(e){ROOM=null;}
   if(ROOM){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Friends in your organization can join from this same page.';
     ROOM.onPeers(renderGameList,()=>{});}
-  else $('#net-note').textContent='Online play turns on when this page runs inside Claude. Bots are always ready.';
+  else if(P2P.ok){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Online play is peer to peer: the host sends each friend an invite code and gets a reply code back.';}
+  else $('#net-note').textContent='This browser cannot do peer-to-peer play. Bots are always ready.';
 })();
 
 function leaveNet(){
@@ -2180,10 +2261,14 @@ function mkSlots(online){const s=[];for(let i=0;i<8;i++){
 function botName(i,d){const L=kv(()=>LORD_NAMES,null);return(L&&L.length?L[(L.length*8-1-i)%L.length]:'Bot '+(i+1))+' ('+DIFF[d]+')';}
 function slotLabel(s,i){return s.k==='b'?botName(i,s.d):(s.n||'Player');}
 
-$('#b-local').onclick=()=>{leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+$('#b-local').onclick=()=>{$('#p2p-host').hidden=true;leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
   $('#setup-title').textContent='New game';$('#code-box').hidden=true;renderSetup();show('setup');};
 $('#b-host').onclick=async()=>{
-  if(!ROOM)return;leaveNet();
+  if(!ROOM){if(!P2P.ok)return;leaveNet();NET.nr=P2P.host();NET.mode='host';NET.code='P2P';NET.lastSeq={};
+    CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(true),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+    $('#setup-title').textContent='Online lobby';$('#code-box').hidden=true;$('#p2p-host').hidden=false;$('#p2p-list').innerHTML='';
+    NET.unsub.push(NET.nr.onPeers(onHostPeers,()=>{}));renderSetup();show('setup');pushState();return;}
+  $('#p2p-host').hidden=true;leaveNet();
   const code=Array.from({length:4},()=>'ABCDEFGHJKMNPQRSTUVWXYZ'[Math.floor(Math.random()*23)]).join('');
   try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){toastMenu('Could not open a game room. Try again.');return;}
   NET.mode='host';NET.code=code;NET.lastSeq={};
@@ -2301,7 +2386,33 @@ function renderGameList(){
     const row=document.createElement('div');row.className='game-row';row.appendChild(b);
     const w=document.createElement('button');w.className='watch';w.textContent='Watch';w.setAttribute('aria-label','Watch '+((clean(p.presence.n)||'this')+"'s game"));w.onclick=()=>joinCode(String(p.presence.h),true);row.appendChild(w);box.appendChild(row);}
 }
-$('#b-join').onclick=()=>{leaveNet();$('#join-msg').textContent='';renderGameList();show('join');};
+$('#b-join').onclick=()=>{leaveNet();$('#join-msg').textContent='';$('#room-join').hidden=!ROOM;$('#p2p-join').hidden=!!ROOM||!P2P.ok;$('#p2p-ans').hidden=true;renderGameList();show('join');};
+// ---------- peer-to-peer invites (no ROOM): host side cards, client side connect ----------
+const copyText=async(t,btn)=>{try{await navigator.clipboard.writeText(t);if(btn){const o=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=o,1400);}}catch(e){toast('Select the code and copy it by hand.',2200);}};
+const shareText=async t=>{try{await navigator.share({text:t});}catch(e){}};
+$('#b-invite').onclick=async()=>{
+  const nr=NET.nr;if(NET.mode!=='host'||!nr||!nr.invite)return;const b=$('#b-invite');b.disabled=true;b.textContent='Preparing…';
+  let inv;try{inv=await nr.invite();}catch(e){toast('Could not make an invite. Try again.',2200);b.disabled=false;b.textContent='Create an invite code';return;}
+  b.disabled=false;b.textContent='Create another invite code';
+  const d=document.createElement('div');d.className='inv';
+  d.innerHTML='<b></b><small>1. Send this code to your friend</small><textarea readonly rows="3" aria-label="Invite code"></textarea><div class="duo"><button class="btn" data-copy>Copy</button><button class="btn" data-share hidden>Share</button></div><small>2. Paste the reply code they send back</small><textarea data-reply rows="3" placeholder="Reply code" aria-label="Reply code" spellcheck="false"></textarea><button class="btn primary" data-go>Connect</button><p class="msg" data-st></p>';
+  d.querySelector('b').textContent='Invite '+inv.n;const ta=d.querySelector('textarea');ta.value=inv.code;ta.onclick=()=>ta.select();
+  d.querySelector('[data-copy]').onclick=e=>copyText(inv.code,e.target);const sh=d.querySelector('[data-share]');if(navigator.share){sh.hidden=false;sh.onclick=()=>shareText(inv.code);}
+  const st=d.querySelector('[data-st]'),go=d.querySelector('[data-go]'),rp=d.querySelector('[data-reply]');
+  go.onclick=async()=>{st.textContent='Connecting…';try{await nr.accept(inv.id,rp.value);st.textContent='Waiting for the connection…';}catch(e){st.textContent='That reply code did not work.';}};
+  const t=setInterval(()=>{if(NET.nr!==nr||!d.isConnected){clearInterval(t);return;}if(inv.isOpen()){st.textContent='Connected ✓';go.hidden=true;rp.hidden=true;d.querySelector('.duo').hidden=true;ta.hidden=true;}},500);
+  $('#p2p-list').appendChild(d);};
+$('#b-p2p-copy').onclick=e=>copyText($('#p2p-out').value,e.target);
+if(navigator.share){$('#b-p2p-share').hidden=false;$('#b-p2p-share').onclick=()=>shareText($('#p2p-out').value);}
+$('#b-p2p-join').onclick=async()=>{
+  const msg=$('#join-msg'),text=$('#p2p-in').value;leaveNet();msg.textContent='Preparing your reply…';let r;
+  try{r=await P2P.join(text);}catch(e){msg.textContent='That invite code did not work.';return;}
+  const mine=r.nr;NET.nr=mine;NET.mode='client';NET.code='P2P';NET.seq=0;NET.cmds=[];NET.gid=null;NET.hadHost=false;G=null;PHASE='lobby';NET.spec=false;
+  $('#p2p-out').value=r.answer;$('#p2p-ans').hidden=false;msg.textContent='Send the reply code to the host, then wait here.';
+  r.opened.then(()=>{if(NET.nr!==mine)return;mine.presence({r:'c',n:myName,c:[],spec:0}).catch(()=>{});NET.unsub.push(mine.onPeers(onClientPeers,()=>{}));
+    $('#wait-title').textContent='Online game';$('#wait-slots').innerHTML='';$('#wait-msg').textContent='Waiting for the host…';show('wait');
+    setTimeout(()=>{if(NET.nr===mine&&!NET.hadHost){leaveNet();show('join');msg.textContent='The host did not answer.';}},12000);});
+  setTimeout(()=>{if(NET.nr===mine&&!r.isOpen()){leaveNet();msg.textContent='Timed out waiting for the host to enter your reply.';}},240000);};
 $('#b-code').onclick=()=>joinCode($('#code-in').value);
 $('#code-in').addEventListener('keydown',e=>{if(e.key==='Enter')joinCode(e.target.value);});
 async function joinCode(code,spec){
@@ -2474,8 +2585,8 @@ const cardsOf=k=>{const id=CARDS.findIndex(q=>q&&q.key===k);return id>=0&&mySlot
 const remoteSol=()=>NET.mode==='client'||NET.mode==='replay'?(G.csol||[]):G.sol;
 
 // ---------- commands ----------
-const CMDS={1:(s,a,b)=>squad(G,s,a,b),2:(s,a,b)=>setRoute(G,s,a,b),3:(s,a)=>upgrade(G,s,a),4:(s,a,b)=>setMode(G,s,a,b),5:s=>drawResearch(G,s),6:(s,a,b,c)=>useSpell(G,s,a,b,c),
-  9:(s,a)=>setMix(G,s,a),11:(s,a)=>fortify(G,s,a),12:(s,a,b)=>choosePath(G,s,a,b),13:(s,a)=>pickCard(G,s,a),14:s=>buildWonder(G,s),17:(s,a)=>hireLord(G,s,a)};
+const CMDS={1:(s,a,b)=>squad(G,s,a,b),2:(s,a,b)=>setRoute(G,s,a,b),3:(s,a,b)=>upgrade(G,s,a,b),4:(s,a,b)=>setMode(G,s,a,b),5:s=>drawResearch(G,s),6:(s,a,b,c)=>useSpell(G,s,a,b,c),
+  9:(s,a)=>setMix(G,s,a),13:(s,a)=>pickCard(G,s,a),14:s=>buildWonder(G,s),17:(s,a)=>hireLord(G,s,a)};
 // a throwing command must not wedge the host's peer loop (it would replay the same seq forever)
 function runCmd(slot,m){const f=CMDS[m[1]],a=m[2];if(!G||!f||!Number.isInteger(a))return false;try{return f(slot,a,+m[3]||0,+m[4]||0);}catch(e){console.error('command',m[1],e);return false;}}
 function issue(type,a,b=0,c=0){
@@ -2508,7 +2619,7 @@ function resetMix(){myMix=15;renderMix();}
 function renderMix(){const lord=myLords()>0;document.querySelectorAll('#mix [data-u]').forEach(b=>{const u=+b.dataset.u,on=String(!!((myMix>>u)&1));if(b.getAttribute('aria-pressed')!==on)b.setAttribute('aria-pressed',on);
   if(u===3&&b.classList.contains('off')===lord){b.classList.toggle('off',!lord);b.setAttribute('aria-disabled',String(!lord));}});}
 document.querySelectorAll('#mix [data-u]').forEach(b=>b.onclick=()=>{const u=+b.dataset.u;
-  if(u===3&&!myLords()){toast('No lord yet. Give a level 3 castle the Citadel path, then raise one there.',2800);return;}
+  if(u===3&&!myLords()){toast('No lord yet. Upgrade a castle to level 3 as a Citadel, then raise a lord there.',2800);return;}
   const m=myMix^(1<<u);if(!(m&7)){toast('Keep at least one kind of demon marching.',1600);return;}
   myMix=m;renderMix();issue(9,m);});
 function hordeArt(){const col=mySlot>=0?COLORS[mySlot]:COLORS[0],H=[24,30,42,50],d=Math.min(2.5,window.devicePixelRatio||1);
@@ -2587,10 +2698,10 @@ const secH=(t,x)=>`<div class="sec"><span>${t}</span>${x||''}</div>`;
 const costEl=k=>`<em class="cost" data-c="${k}">${gly('wisp')}<span></span></em>`;
 function reqTxt(t){const r=UNIT[t]&&UNIT[t].req;return t===0?'any castle':t===3?'raised in a Citadel':'a Spawner castle at level '+r+(t===1?' or higher':' or 6');}
 function upSub(c){const n=c.lv+1,q={...c,lv:n};if(c.kind==='m')return'+'+(passiveRate(G,{...q,sup:true})*G.sp).toFixed(1)+' souls/s at level '+n+(c.sup?'':' once linked to your Throne');
-  let t='Holds '+capOf(q)+' supply, breeds and mines souls faster';
+  let t='Holds '+capOf(q)+' supply, breeds and mines souls faster, stronger towers';
   if(c.capital>=0){const a=armyCap(G,mySlot);let b=a;c.lv=n;try{b=armyCap(G,mySlot);}finally{c.lv=n-1;}if(b>a)t+=', horde cap +'+(b-a);}
   for(let u=1;u<NU;u++)if(!unitOk(c,u)&&unitOk(q,u))t+=', breeds '+UNIT[u].name.toLowerCase()+'s';
-  return t+(n===3&&!c.path?', opens paths':'');}
+  return t;}
 const sigOf=s=>s.capital>=0?'crown':s.kind==='m'?'wisp':s.owner===NEUTRAL?(s.kind==='f'?'skull':'hut'):'keep';
 const headH=(s,col)=>`<div class="ph"><span class="sig" style="--c:${col}">${gly(sigOf(s))}</span><div class="t"><div class="nm"><b data-n></b><span class="kd" data-kd></span></div><small data-st></small></div><button class="x" aria-label="Close">${gly('x')}</button></div><div class="chips" data-ch></div><div class="comp" data-cp></div>`;
 const pingsH=()=>`<div class="pings"><button data-ping="0"><i class="pm">!</i>Attack here</button><button data-ping="1"><i class="pm d">+</i>Defend here</button></div>`;
@@ -2616,17 +2727,15 @@ function ownPanel(c,p,ls,lords){const spring=c.kind==='m';let h=headH(c,COLORS[m
     if(p.ws>=n||p.wb>=0)h+='<p class="hint hg" data-wd></p>'+(p.wb>=0?'<div class="bar-prog hg"><i data-wp></i></div>':'');
     else if(c.lv<3)h+=`<p class="hint">Raise your Throne to level 3 to begin the Hellgate: ${n} stages, then hold the Throne ${mins} minutes to win.</p>`;
     else h+=`<button class="act hg" data-wonder><b>Raise stage ${p.ws+1} of ${n}</b>${costEl('wo')}<small>${Math.round(WONDER_T)} s each. After the last, hold your Throne ${mins} minutes to win. Everyone is warned.</small></button>`;}
-  if(!spring&&!c.path&&!c.build&&c.lv>=3){h+=secH('Choose a path',costEl('pa'))+'<div class="paths">';
-    for(let q=1;q<PATHS.length;q++)if(PATHS[q]&&!(q===2&&c.capital>=0))h+=`<button class="act pa pa${q}" data-path="${q}"><b>${escH(PATHS[q].name)}</b><small>${escH(PATHS[q].desc)}</small></button>`;
-    h+=`</div><p class="hint">Permanent. Takes ${Math.round(PATH_T)} s, and breeding pauses meanwhile.</p>`;}
   if(c.path===2){h+=secH('Lord');const own=ls&&ls.lord;
     lords.forEach((l,i)=>{h+=`<div class="lord">${gly('lord')}<div><b>Lord ${escH(l.nm||'')}</b><small data-lh="${i}"></small><div class="bar-prog hp"><i data-lhp="${i}"></i></div></div></div>`;});
     if(own&&!lords.some(l=>l===own||l.id!=null&&l.id===own.id))h+=`<p class="hint">Lord ${escH(own.nm||'')} of this citadel is out in the field.</p>`;
     else if(ls&&!own)h+=`<button class="act lordb" data-lord><b>${gly('lord')}Raise a lord</b>${costEl('lo')}<small data-lw></small></button>`;}
-  if(!c.build&&c.lv<maxLv(c))h+=secH(spring?'Deepen the spring':'Raise the castle')+`<button class="act up" data-up><b>${spring?'Spring level '+(c.lv+1):escH(LVNAME[c.lv+1]||'Den')+', level '+(c.lv+1)}</b>${costEl('up')}<small data-ups></small></button>`;
-  h+=secH('Towers','<span class="pips">'+[1,2,3].map(i=>`<i class="${i<=(c.tl|0)?'on':i===(c.tl|0)+1&&c.build&&c.build.k===1?'now':''}"></i>`).join('')+'</span>');
-  if((c.tl|0)>=3)h+=`<p class="hint">Fully fortified: the ring of towers fires on anything that comes near while the castle holds troops.</p>`;
-  else h+=`<button class="act tw" data-tw><b>${gly('tower')}${(c.tl|0)?'Raise the towers to level '+((c.tl|0)+1):'Build a ring of towers'}</b>${costEl('tw')}<small data-tws></small></button>`;
+  if(!c.build&&c.lv<maxLv(c)){
+    if(!spring&&c.lv===maxLv(c)-1){h+=secH('Specialise and rise to level '+(c.lv+1),costEl('pa'))+'<div class="paths">';
+      for(let q=1;q<PATHS.length;q++)if(PATHS[q]&&!(q===2&&c.capital>=0))h+=`<button class="act pa pa${q}" data-path="${q}"><b>${escH(PATHS[q].name)}</b><small>${escH(PATHS[q].desc)}</small></button>`;
+      h+=`</div><p class="hint" data-ups></p>`;}
+    else h+=secH(spring?'Deepen the spring':'Raise the castle')+`<button class="act up" data-up><b>${spring?'Spring level '+(c.lv+1):escH(LVNAME[c.lv+1]||'Den')+', level '+(c.lv+1)}</b>${costEl('up')}<small data-ups></small></button>`;}
   if(c.route>=0)h+=`<div class="rt"><span data-rt></span><button data-stop>Stop route</button></div>`;
   if(hasMates())h+=pingsH();
   return h;}
@@ -2634,10 +2743,9 @@ function bindPanel(P){const on=(q,f)=>P.querySelectorAll(q).forEach(b=>b.onclick
   on('.x',()=>{sel=-1;updatePanel();});
   on('[data-mode]',b=>issue(4,sel,+b.dataset.mode));
   on('[data-wonder]',()=>issue(14,0));
-  on('[data-path]',b=>issue(12,sel,+b.dataset.path));
+  on('[data-path]',b=>issue(3,sel,+b.dataset.path));
   on('[data-lord]',()=>issue(17,sel));
   on('[data-up]',()=>issue(3,sel));
-  on('[data-tw]',()=>issue(11,sel));
   on('[data-stop]',()=>issue(2,sel,-1));
   on('[data-ping]',b=>sendPing(sel,+b.dataset.ping));}
 function tickPanel(P,c,s,p,mine,visible,ls,lords){
@@ -2660,7 +2768,7 @@ function tickPanel(P,c,s,p,mine,visible,ls,lords){
   if(visible&&c.assault)ch+=chip('Under attack','bad');
   if(mine){if(!c.sup&&!(c.capital>=0))ch+=chip('Cut off from the Throne','warn');}
   else{if(lords.length)ch+=chip(gly('lord')+'Lord inside','gold');
-    ch+=chip(gly('wisp')+'Loot '+Math.round(8*(s.lv||1)+(isWalled(c)?60:0)),'soul');
+    ch+=chip(gly('wisp')+'Loot '+lootOf(s),'soul');
     if(s.owner!==NEUTRAL&&s.kind!=='m'&&s.lv>1)ch+=chip('Drops to level '+(s.lv-1)+(pth?' and loses its path':'')+' if taken');}
   putH(P.querySelector('[data-ch]'),ch);
   let cp='';if(s.u)for(let t=0;t<NU;t++){const n=Math.floor(s.u[t]||0);if(n>0)cp+=`<span class="cp">${gly(UGL[t])}<b>${n}</b><small>${escH(UNIT[t].short)}</small></span>`;}
@@ -2678,16 +2786,16 @@ function tickPanel(P,c,s,p,mine,visible,ls,lords){
     else if(c.kind!=='m')t='';putT(mh,t);mh.hidden=!t;mh.classList.toggle('warn',!!c.mode&&!c.sup&&c.capital<0);}
   putT(P.querySelector('[data-armp]'),c.build?'building…':'+'+(growRate(G,{...c,mode:0})*G.sp).toFixed(1)+' troops/s');
   putT(P.querySelector('[data-soulp]'),'+'+(modeRate(G,{...c,mode:1})*G.sp).toFixed(1)+' souls/s');
-  if(c.build){const b=c.build,pr=b.dur>1?b.t/b.dur:b.t;putT(P.querySelector('[data-bl]'),(b.k>=20?'Becoming a '+(PATHS[b.k-20]?PATHS[b.k-20].name:'new path'):b.k===1?'Raising the towers to level '+((c.tl|0)+1):'Rising to level '+(c.lv+1))+' · breeding paused');
+  if(c.build){const b=c.build,pr=b.dur>1?b.t/b.dur:b.t;putT(P.querySelector('[data-bl]'),(b.k>=20?'Rising to level 3 as a '+(PATHS[b.k-20]?PATHS[b.k-20].name:'specialist'):'Rising to level '+(c.lv+1))+' · breeding paused');
     const bp=P.querySelector('[data-bp]');if(bp)bp.style.width=Math.round(Math.max(0,Math.min(1,pr))*100)+'%';}
   const wd=P.querySelector('[data-wd]');if(wd){if(p.ws>=WONDER_STAGES)putT(wd,'The Hellgate stands open. Hold your Throne: '+fmtClock((WONDER_HOLD-p.wh)/G.sp)+' left'+(c.assault?' (under attack, losing time)':'')+'.');
     else{putT(wd,'Raising stage '+(p.ws+1)+' of '+WONDER_STAGES+(c.assault?' (paused while under attack)':'')+'.');const wp=P.querySelector('[data-wp]');if(wp)wp.style.width=Math.round(Math.max(0,Math.min(1,p.wb/WONDER_T))*100)+'%';}}
   cost('wo',WONDER_COST);
-  if(P.querySelector('[data-path]')){const v=pathCost(G,mySlot);cost('pa',v);P.querySelectorAll('[data-path]').forEach(b=>b.disabled=!(souls>=v));}
+  if(P.querySelector('[data-path]')){const v=upCost(G,mySlot,c);cost('pa',v);P.querySelectorAll('[data-path]').forEach(b=>b.disabled=!(souls>=v)||!!c.build);}
   if(ls){cost('lo',ls.price,!ls.can);putT(P.querySelector('[data-lw]'),!ls.can&&typeof ls.why==='string'&&ls.why?ls.why:'One per Citadel. He leads your blocks; demons near him fight harder.');}
   lords.forEach((l,i)=>{const mx=l.max||l.hp||1;putT(P.querySelector('[data-lh="'+i+'"]'),'Serves here · '+Math.ceil(l.hp)+' / '+Math.round(mx)+' hp'+(l.rk?' · rank '+l.rk:''));const e=P.querySelector('[data-lhp="'+i+'"]');if(e)e.style.width=Math.round(Math.max(0,Math.min(1,l.hp/mx))*100)+'%';});
   if(P.querySelector('[data-up]')){cost('up',upCost(G,mySlot,c),!!c.build);putT(P.querySelector('[data-ups]'),upSub(c));}
-  if(P.querySelector('[data-tw]')){const n=(c.tl|0)+1;cost('tw',towerCost(G,mySlot,c),!!c.build);putT(P.querySelector('[data-tws]'),'Level '+n+': shoots enemies within '+Math.round(TW_R[n]*(1+(mod(G,mySlot,'tower')-1)/2))+' of the castle, +'+Math.round(n*6)+'% defence.');}
+  else if(P.querySelector('[data-path]'))putT(P.querySelector('[data-ups]'),upSub(c)+'. Permanent.');
   const rt=P.querySelector('[data-rt]');if(rt){const d=G.castles[c.route],full=d&&isTeam(d.owner)&&load(d)>=capOf(d)*.95;putT(rt,!d?'':full?'Route to '+G.names[c.route]+' waits: that castle is full':'Troops stream to '+G.names[c.route]);}
 }
 // keeps the toast clear of the tutorial card and the Hellgate banner

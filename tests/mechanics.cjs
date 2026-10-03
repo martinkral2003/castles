@@ -43,36 +43,37 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   G.gt+=11;const g0=G.pl[0].earned;H.kill(G,0,{o:1,u:0},10,10);ok(G.pl[0].earned>g0,'the cap window reopens');
   ok(near(H.killSouls(0),H.KILL_V,1e-9)&&near(H.killSouls(1),H.KILL_V*1.45/.75,1e-9)&&near(H.killSouls(3),H.KILL_V*14/.75,1e-9),'kill value scales with hp');
 }
-{ // towers: build one level, fire at enemies near the castle, lose a level on capture
-  const G=mk();const c=own(G,0);prep(G);const s0=G.pl[0].souls;
-  ok(H.towerCost(G,0,c)===H.TOWER_COST[0],'tower level 1 cost');ok(H.fortify(G,0,G.capIdx[0])&&G.pl[0].souls===s0-H.TOWER_COST[0],'fortify pays');
-  ok(H.fortify(G,0,G.capIdx[0])===false,'cannot fortify twice while building');
-  run(G,H.TOWER_T+1);ok(c.tl===1,'tower level 1 built');
-  const nb=G.adj[G.capIdx[0]][0].to;
-  for(const lvl of [2,3]){H.fortify(G,0,G.capIdx[0]);run(G,H.TOWER_T+1);}
-  ok(c.tl===3&&H.fortify(G,0,G.capIdx[0])===false,'tower level caps at 3');
-  c.u=[30,0,0];c.size=30;
+{ // upgrades: cost scales with castles owned, towers come with the level, level 3 is where a castle specialises
+  const G=mk();const ci=G.capIdx[0],c=own(G,0);prep(G);const s0=G.pl[0].souls;
+  ok(H.upCost(G,0,c)===H.LVCOST[1],'level 2 costs '+H.LVCOST[1]+' with one castle');
+  ok(c.tl===0,'a level-1 castle has no towers');
+  ok(H.upgrade(G,0,ci)&&G.pl[0].souls===s0-H.LVCOST[1],'upgrade pays');ok(H.upgrade(G,0,ci)===false,'cannot upgrade twice while building');
+  run(G,H.LEVEL_T+1);ok(c.lv===2&&c.tl===1,'level 2 brings tower level 1');
+  const other=G.castles.find((k,i)=>i!==ci&&i!==G.capIdx[1]&&k.kind!=='m');other.owner=0;other.u=[10,0,0];other.size=10;
+  ok(H.upCost(G,0,c)===Math.round(H.LVCOST[2]*1.1),'a second castle makes upgrades 10% dearer');
+  ok(H.upgrade(G,0,ci)===false,'the level-3 upgrade needs a specialisation');ok(H.upgrade(G,0,ci,2)===false,'the Throne cannot specialise as a Citadel');
+  ok(H.upgrade(G,0,ci,3),'the level-3 upgrade with a Spawner works');run(G,H.PATH_T+1);ok(c.lv===3&&c.path===3&&c.tl===2,'level 3 Spawner, towers level 2');
+  ok(H.upgrade(G,0,ci,3)===false,'no upgrades past level 3');
+  const nb=G.adj[ci][0].to;c.u=[30,0,0];c.size=30;
   // an enemy soldier parked in range gets shot
-  G.sol.push({id:9999,o:1,from:nb,to:G.capIdx[0],e:G.edgeKey[nb+'_'+G.capIdx[0]],d:1,off:0,st:3,u:0,g:0,rk:0,xp:0,hp:5,cd:0,tgt:null,tt:9,ret:0,ch:false,x:c.x+40,y:c.y,px:c.x+40,py:c.y,hx:1,hy:0,wx:0,wy:0,lord:null,au:0});G.fieldN[1]++;
-  const hp0=5;run(G,6);const s=G.sol.find(x=>x.id===9999);ok(!s||s.hp<hp0,'tower shoots an enemy within range');
+  G.sol.push({id:9999,o:1,from:nb,to:ci,e:G.edgeKey[nb+'_'+ci],d:1,off:0,st:3,u:0,g:0,rk:0,xp:0,hp:5,cd:0,tgt:null,tt:9,ret:0,ch:false,x:c.x+40,y:c.y,px:c.x+40,py:c.y,hx:1,hy:0,wx:0,wy:0,lord:null,au:0});G.fieldN[1]++;
+  const hp0=5;run(G,6);const sl=G.sol.find(x=>x.id===9999);ok(!sl||sl.hp<hp0,'tower shoots an enemy within range');
 }
-{ // paths and lords
-  const G=mk();prep(G);const c=own(G,0);c.lv=3;
-  ok(H.choosePath(G,0,G.capIdx[0],2)===false,'the Throne cannot take Citadel');
-  ok(H.choosePath(G,0,G.capIdx[0],3)===true,'the Throne can take Spawner');
-  const q=G.castles.find((k,i)=>i!==G.capIdx[0]&&i!==G.capIdx[1]&&k.kind!=='m');q.owner=0;q.lv=3;q.u=[10,0,0];q.size=10;q.path=0;q.build=null;
-  ok(H.choosePath(G,0,G.castles.indexOf(q),2)===true,'a level-3 castle can take Citadel');run(G,20);ok(q.path===2&&H.isWalled(q),'Citadel is walled');
+{ // specialisation and lords
+  const G=mk();prep(G);const c=own(G,0);c.lv=2;
+  const q=G.castles.find((k,i)=>i!==G.capIdx[0]&&i!==G.capIdx[1]&&k.kind!=='m');q.owner=0;q.lv=2;q.u=[10,0,0];q.size=10;q.path=0;q.build=null;
+  ok(H.upgrade(G,0,G.castles.indexOf(q),2)===true,'a level-2 castle can rise to level 3 as a Citadel');run(G,20);ok(q.lv===3&&q.path===2&&H.isWalled(q)&&q.tl===3,'Citadel is walled and gets an extra tower level');
   ok(H.lordStatus(G,0,G.castles.indexOf(q)).can,'a Citadel can hire a lord');ok(H.hireLord(G,0,G.castles.indexOf(q))&&q.lords.length===1,'lord hired');
   ok(H.lordStatus(G,0,G.capIdx[0]).can===false,'the Throne cannot hire a lord');
 }
 { // research: two cards at once, price scale, tiers (weak early, strong late)
   const G=mk();prep(G);const p=G.pl[0];
   ok(H.researchCost(G,0)===40,'first card costs 40');ok(H.drawResearch(G,0)&&p.offer.length===2&&p.offer[0]!==p.offer[1],'two distinct cards offered');
-  ok(p.otier===0&&H.TIER_MUL.join()==='0.5,1,1.8','early draws are tier 0');
+  ok(p.otier===0&&H.TIER_MUL.join()==='0.7,1,1.25','early draws are tier 0');
   ok(H.drawResearch(G,0)===false,'no second draw while an offer is pending');
-  const id=p.offer[1];ok(H.pickCard(G,0,1)&&p.offer===null&&p.rn===1,'pick clears the offer');ok(near(p.cards[id],H.CARDS[id].max===1?1:0.5,1e-9),'a tier-0 pick is worth half');
-  ok(H.researchCost(G,0)===Math.round(40*1.12),'price rises by 12%');
-  p.rn=8;H.drawResearch(G,0);ok(p.otier===2,'late draws are tier 2');const id2=p.offer[0],b0=p.cards[id2]||0;H.pickCard(G,0,0);ok(near(p.cards[id2]-b0,H.CARDS[id2].max===1?1:Math.min(1.8,H.CARDS[id2].max-b0),1e-9),'a tier-2 pick is worth 1.8');
+  const id=p.offer[1];ok(H.pickCard(G,0,1)&&p.offer===null&&p.rn===1,'pick clears the offer');ok(near(p.cards[id],H.CARDS[id].max===1?1:H.TIER_MUL[0],1e-9),'a tier-0 pick is the weak one');
+  ok(H.researchCost(G,0)===Math.round(40*1.15),'price rises by 15%');
+  p.rn=8;H.drawResearch(G,0);ok(p.otier===2,'late draws are tier 2');const id2=p.offer[0],b0=p.cards[id2]||0;H.pickCard(G,0,0);ok(near(p.cards[id2]-b0,H.CARDS[id2].max===1?1:Math.min(H.TIER_MUL[2],H.CARDS[id2].max-b0),1e-9),'a tier-2 pick is the strong one');
   ok(H.SPELLS.length===2&&H.CARDS.length===17,'2 spells and 17 cards');
   ok(H.CARDS.filter(c=>c.max>1&&c.tag!=='lord'&&c.key!=='lcost').every(c=>{const m=/\+(\d+)%|−(\d+)%/.exec(c.eff(1));return m&&+(m[1]||m[2])>=15;}),'a normal (tier 1) pick is at least 15%');
   const A=mk(2,{seed:5}),B=mk(2,{seed:5});A.pl[0].souls=999;A.pl[0].rn=8;H.drawResearch(A,0);const j=JSON.parse(JSON.stringify(H.encode(A)));H.decodeInto(B,j);ok(B.pl[0].otier===2&&B.pl[0].offer.join()===A.pl[0].offer.join(),'offer tier survives encode');
@@ -87,7 +88,7 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
 }
 { // capture: loot, level and tower drop, Souls mode reset
   const G=mk();const c=own(G,1);const nb=G.adj[G.capIdx[1]][0].to,n=G.castles[nb];n.owner=1;n.lv=3;n.tl=2;n.mode=1;n.u=[5,0,0];n.size=5;
-  const s0=G.pl[0].souls;H.capture(G,nb,0);ok(n.owner===0&&n.lv===2&&n.tl===1&&n.mode===0&&G.pl[0].souls===s0+Math.round(8*3),'capture: -1 level, -1 tower, mode reset, loot '+(G.pl[0].souls-s0));
+  const s0=G.pl[0].souls;H.capture(G,nb,0);ok(n.owner===0&&n.lv===2&&n.tl===1&&n.mode===0&&G.pl[0].souls===s0+H.lootOf({lv:3,nw:0,path:0}),'capture: -1 level, -1 tower, mode reset, loot '+(G.pl[0].souls-s0));
 }
 { // fair springs on ordinary maps and guarded
   let springs=0,unguarded=0;for(let k=0;k<12;k++){const G=mk(2+k%3,{seed:700+k*13,mt:k%8,ms:k%3});for(const c of G.castles)if(c.kind==='m'){springs++;if(c.size<H.SPRING_GUARD-5)unguarded++;}}

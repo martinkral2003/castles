@@ -26,7 +26,18 @@ towers), the five spell-learning cards, spell slots.
   2 afterwards, with `TIER_MUL = [.5, 1, 1.8]`. `p.cards[id]` is the summed power (capped at the card's `max`), `p.otier` the tier of the pending offer; unique cards (Siegebreakers, Blood Oath) only
   appear from the 5th draw and count as 1. Card descriptions no longer contain numbers; the headline `cardEffect(id, mult)` shows the value of this pick.
 * **Two spells only**: 0 Horde Boost, 1 Spies. Hellfire and its Mastery card are gone (17 cards, `p.cd` has 2 entries, no `G.fires`, no `fr` in the snapshot). `kill` is exported for tests.
+* **Online without a server** (`src/net.js`, `P2P`): host and friends connect with WebRTC data channels using invite and reply codes; same room-adapter shape as the claude.ai API, host relays presence. See CLAUDE.md.
 * Sims on these rules (60 duels, 32 bot games): Harvester vs Aggressive 25-26, 4-6 player median about 19 min, none unfinished, about half end by Hellgate.
+
+**Revision 4 (2026-10-03, evening) overrides revisions 2 and 3 where they differ:**
+* **A castle has two actions: Army/Souls and upgrade** (plus hiring a lord in a Citadel, and the Throne's Hellgate). There is **no tower purchase and no separate path purchase** (`fortify`,
+  `choosePath`, `towerCost`, `pathCost`, `PATH_COST`, `TOWER_COST` are gone). Towers come with the level: `syncTowers(c)` sets `c.tl = (lv−1) + (Citadel ? 1 : 0)` (max 3) on every level-up and capture.
+* **`upgrade(G,slot,ci,path)`**: levels 1→2 are plain; the upgrade to level 3 takes a specialisation (1 Soul Well, 2 Citadel, not on the Throne, 3 Spawner) and is one purchase; the panel shows the
+  specialisations instead of an "upgrade to level 3" button. `c.build.k` is `0` (level) or `20+path` (level 3 with a path, `PATH_T` seconds). Springs have no specialisation.
+* **Upgrade cost scales with castles owned**: `LVCOST[lv] × (1 + 0.10·(owned−1)) × thrift`, `owned` counts every castle you hold.
+* **Souls from fights are smaller** (souls were too easy without Souls castles): `KILL_V = 0.45`, `KILL_CAP = 30` per 10 s, loot `lootOf(c) = 5·lv + (walled ? 40 : 0)`.
+* **Cards scale less**: `TIER_MUL = [.7, 1, 1.25]` and research costs `round(40·1.15^n)`.
+* Because towers now come with every upgraded castle, tower fire is ×0.6 (`TW_FIRE`, tuning key `TWS`). Sims on revision 4 (80 duels, 32 bot games): Harvester vs Aggressive about even, 4-6 player median about 26 min, about 60% end by Hellgate (900 a stage).
 
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -91,7 +102,7 @@ towers), the five spell-learning cards, spell slots.
 5. **Capture loot**: `round(8·oldLevel + (wasWalled?60:0))` souls.
 * Start: `opts.souls` (Standard 40 / Rich 200 / Lavish 500). `p.earned`, `p.inc` (smoothed souls/s) as before.
 * Costs (souls): level-ups `LVCOST=[0,50,100,160,230,320]`, path `PATH_COST=120`, towers `TOWER_COST=[60,110,170]` (level 1/2/3), research
-  `round(40·1.12^p.rn)`, spells see §1.7, lord `140+70·p.lh`, Hellgate stage 650. Thrift cards cut level/path/tower costs.
+  `round(40·1.12^p.rn)`, spells see §1.7, lord `140+70·p.lh`, Hellgate stage 900. Thrift cards cut level/path/tower costs.
 
 ### 1.5 Castle paths (level ≥ 3, permanent, `PATH_COST` souls, `PATH_T=15` s, not on springs)
 1. **Soul Well** — passive souls `0.30+0.10·lv`/s, Souls-mode yield ×1.5, breeds 30% slower.
@@ -146,7 +157,7 @@ Shatter's wall-breaching is gone, so walls need siege units or the Siegebreakers
   one tower level. Neutral bone fortresses have `tl = 2`. Towers fall silent in a breach (no Shatter now: they fall silent only if the castle has no troops).
 * **Walls**: neutral fortresses (`c.nw`) and Citadel castles are *walled*: attackers do ×`WALL_MUL = 0.55` unless they have siege (Siegebreakers card,
   greater demons, lords).
-* **Hellgate** (the Wonder): needs the Throne at level ≥ 3; five stages, each `WONDER_COST=650` souls and `WONDER_T=45` s; then hold the Throne
+* **Hellgate** (the Wonder): needs the Throne at level ≥ 3; five stages, each `WONDER_COST=900` souls and `WONDER_T=45` s; then hold the Throne
   `WONDER_HOLD=240` s (attacks roll the timer back); everyone is warned. `opts.wonder` can disable it. Cost is tunable once the new economy is simmed.
 * Victory: take every rival Throne, or finish and hold the Hellgate.
 

@@ -20,6 +20,7 @@ npm run sim:balance      # economic (Harvester) vs aggressive bots
 npm run sim:research     # value of research cards for identical bots
 npm run sim:length       # bigger games: length and stalls
 npm run sim:usage        # what the bots build and earn, per personality
+npm run test:p2p -- docs/index.html   # two headless pages play a game over WebRTC (needs Playwright)
 ```
 
 ## Layout
@@ -28,6 +29,7 @@ npm run sim:usage        # what the bots build and earn, per personality
 | `src/core.js` | Game engine: map generation, simulation, soldiers, supply, souls, castle towers, cards, spells, lords, bots, sync encoding |
 | `src/art.js` | Procedural castle (with tower rings), hovel, spring and Hellgate sprites, terrain builder |
 | `src/units.js` | Procedural unit figures (minions, demons, lords) and corpses |
+| `src/net.js` | Serverless multiplayer: WebRTC with invite/reply codes (works on GitHub Pages) |
 | `src/head.js` | Menus, lobby, campaign, daily challenge, replays, online glue |
 | `src/panel.js` | Commands, castle panel, research cards, spell bar, Send chips |
 | `src/tail.js` | Canvas renderer, effects, fog, HUD, gestures |

@@ -7,7 +7,7 @@ const html = r('shell.html')
   .replace('/*GAME_CSS*/', () => r('game.css'))
   .replace('<!--GAME_HTML-->', () => r('game.html'))
   .replace('/*CORE*/', () => r('core.js') + '\n' + r('art.js') + '\n' + r('units.js'))
-  .replace('/*UI*/', () => r('head.js') + '\n' + r('panel.js') + '\n' + r('tail.js'));
+  .replace('/*UI*/', () => r('net.js') + '\n' + r('head.js') + '\n' + r('panel.js') + '\n' + r('tail.js'));
 const oi = process.argv.indexOf('--out');
 const dirs = oi > 0 ? [process.argv[oi + 1]] : ['www', 'docs'];
 for (const dir of dirs) { mkdirSync(dir, { recursive: true }); writeFileSync(`${dir}/index.html`, html); }

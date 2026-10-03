@@ -7,14 +7,14 @@ const SPEED_S=25,ENGAGE=26,MELEE=7,HIT_F=0.36,CD_F=0.9,HIT_W=0.155,CD_W=1.25,FIR
 const LV=[null,{cap:45,g:.35},{cap:90,g:.6},{cap:150,g:.95}]; // three levels; the Throne holds 40% more and breeds 25% faster than a castle of its level
 const lvg=c=>LV[c.lv].g*(c.capital>=0?1.25:1);
 const LVCOST=[0,70,160];let GG=null;
-const TOWER_COST=[60,110,170],TOWER_T=8,TW_R=[0,80,90,100],TW_FIRE=[0,5,9,14];
-const WALL_MUL=TUNE.WALL??0.55,SOUL_YIELD=TUNE.SY??3.0,KILL_V=TUNE.KV??0.8,KILL_BACK=0.5,KILL_CAP=TUNE.KC??45,KILL_WIN=10,CATCHUP=0,SPRING_GUARD=30,LORD_R=85,LORD_CD=40,LORD_HEAL=0.4;
+const TW_R=[0,80,90,100],TW_FIRE=[0,5,9,14].map(v=>v*(TUNE.TWS??0.6));
+const WALL_MUL=TUNE.WALL??0.55,SOUL_YIELD=TUNE.SY??3.0,KILL_V=TUNE.KV??0.45,KILL_BACK=0.5,KILL_CAP=TUNE.KC??30,KILL_WIN=10,CATCHUP=0,SPRING_GUARD=30,LORD_R=85,LORD_CD=40,LORD_HEAL=0.4;
 const PATHS=[null,
  {name:'Soul Well',desc:'Gathers souls on its own; Souls mode yields 50% more; breeds 30% slower'},
  {name:'Citadel',desc:'Walled, defence ×1.6, holds 25% more, sees far, cheaper towers, hires a lord. Not for the Throne'},
  {name:'Spawner',desc:'Breeds 40% faster and is the only castle that makes lesser and greater demons'}];
-const PATH_COST=120,PATH_T=15,LEVEL_T=12;
-const WONDER_COST=TUNE.WG??650,WONDER_T=45,WONDER_STAGES=5,WONDER_HOLD=TUNE.WH??240;
+const PATH_T=15,LEVEL_T=12,UP_SCALE=TUNE.UCS??0.1;
+const WONDER_COST=TUNE.WG??900,WONDER_T=45,WONDER_STAGES=5,WONDER_HOLD=TUNE.WH??240;
 // sup = supply weight (army cap and castle capacity), gcost = breeding it eats, req = Spawner level needed (the lord is hired, never bred)
 const UNIT=[{name:'Minion',short:'Minion',hp:.75,spd:1,dmg:.27,wall:1,sup:1,gcost:1,req:1},
  {name:'Lesser demon',short:'Lesser',hp:1.45,spd:1,dmg:.4,wall:1.1,sup:2,gcost:2.2,req:3},
@@ -29,7 +29,7 @@ const SPELLS=[
  {id:1,name:'Spies',desc:'Reveals a circle of the map for 20 s',cost:20,cd:25,kind:'point',r:200,dur:20}];
 const MAGIC_KEY=['horde','spy'];
 // card power: a pick's strength depends on how many cards you have drawn so far (weak early, strong late); cards[id] sums the powers, capped at max
-const TIER_MUL=[.5,1,1.8],tierOf=rn=>rn<3?0:rn<7?1:2;
+const TIER_MUL=[.7,1,1.25],tierOf=rn=>rn<3?0:rn<7?1:2;
 const CARDS=((pc,mc,on)=>[['grow','Fecund Pits','Troops breed faster','soul',3,n=>1+.15*n,pc(15)],
  ['tithe','Blood Tithe','More souls from kills and Souls mode','soul',3,n=>1+.15*n,pc(15)],
  ['well','Deep Wells','More souls from Soul Wells and Springs','soul',3,n=>1+.4*n,pc(40)],
@@ -204,10 +204,13 @@ function defMul(G,c){let d=(c.hill?1.3:1)*garrisonTough(G,c)*(1+0.06*(c.tl|0));
   if(c.owner===NEUTRAL)return d*1.12*(c.nw?1.2:1);
   d*=1.35*mod(G,c.owner,'def');if(c.capital>=0)d*=1.25;if(c.path===2)d*=1.6;if(c.lords&&c.lords.length)d*=1.15;return d;}
 const thrift=(G,s)=>mod(G,s,'thrift');
-function upCost(G,s,c){return c&&c.lv<maxLv(c)?Math.round(LVCOST[c.lv]*thrift(G,s)):Infinity;}
-function pathCost(G,s){return Math.round(PATH_COST*thrift(G,s));}
-function towerCost(G,s,c){return c&&(c.tl|0)<3?Math.round(TOWER_COST[c.tl|0]*thrift(G,s)*(c.path===2?0.7:1)):Infinity;}
-function researchCost(G,s){return Math.round(40*Math.pow(1.12,G.pl[s].rn));}
+const owned=(G,s)=>{let n=0;for(const c of G.castles)if(c.owner===s)n++;return n;};
+// each castle beyond the first makes every upgrade 10% dearer
+function upCost(G,s,c){return c&&c.lv<maxLv(c)?Math.round(LVCOST[c.lv]*(1+UP_SCALE*Math.max(0,owned(G,s)-1))*thrift(G,s)):Infinity;}
+// towers come with the castle: one level per castle level above 1, and a Citadel adds one
+function syncTowers(c){c.tl=c.kind==='m'?0:Math.min(3,Math.max(0,c.lv-1)+(c.path===2?1:0));}
+const lootOf=c=>Math.round(5*c.lv+(isWalled(c)?40:0));
+function researchCost(G,s){return Math.round(40*Math.pow(1.15,G.pl[s].rn));}
 function lordPrice(G,s){return Math.round((140+70*G.pl[s].lh)*mod(G,s,'lcost'));}
 function spellCost(G,s,id){return Math.round(SPELLS[id].cost*(1-[.2,.15][id]*mod(G,s,MAGIC_KEY[id])));}
 function spellCd(G,s,id){return SPELLS[id].cd;}
@@ -270,12 +273,11 @@ function setPour(G,slot,from,to){const p=G.pl[slot];
   if(!p.pour||p.pour.from!==from||p.pour.to!==to){if(p.pour)releaseMuster(G,slot,p.pour.from);p.pour={from,to,g:G.gid++,lt:0};p.pourA=0;p.pourH=0;}}
 function buildWonder(G,s){const p=G.pl[s];if(G.opts&&!G.opts.wonder)return false;if(p.out||G.over||p.wb>=0||p.ws>=WONDER_STAGES)return false;const c=G.castles[G.capIdx[s]];if(!c||c.owner!==s||c.lv<3||p.souls<WONDER_COST)return false;
   p.souls-=WONDER_COST;p.wb=0;ev(G,{t:'wonder',s,stage:p.ws});return true;}
-function choosePath(G,slot,ci,pth){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build||c.path||c.kind==='m'||c.lv<3||!(pth>=1&&pth<=3)||(pth===2&&c.capital>=0))return false;const p=G.pl[slot],cost=pathCost(G,slot);if(p.souls<cost)return false;
-  p.souls-=cost;c.build={k:20+pth,t:0,dur:PATH_T};ev(G,{t:'up',c:ci});return true;}
-function upgrade(G,slot,ci){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build)return false;const cost=upCost(G,slot,c),p=G.pl[slot];if(!(cost<=p.souls))return false;
-  p.souls-=cost;c.build={k:0,t:0,dur:LEVEL_T};ev(G,{t:'up',c:ci});return true;}
-function fortify(G,slot,ci){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build||(c.tl|0)>=3)return false;const cost=towerCost(G,slot,c),p=G.pl[slot];if(!(cost<=p.souls))return false;
-  p.souls-=cost;c.build={k:1,t:0,dur:TOWER_T};ev(G,{t:'up',c:ci});return true;}
+// upgrade a castle one level; the last level (3) is also where it specialises (path 1 Soul Well, 2 Citadel, 3 Spawner; the Throne cannot be a Citadel)
+function upgrade(G,slot,ci,pth){if(!own(G,slot,ci))return false;const c=G.castles[ci];if(c.build||c.lv>=maxLv(c))return false;
+  const last=c.lv===maxLv(c)-1&&c.kind!=='m';if(last&&(!(pth>=1&&pth<=3)||(pth===2&&c.capital>=0)))return false;
+  const cost=upCost(G,slot,c),p=G.pl[slot];if(!(cost<=p.souls))return false;
+  p.souls-=cost;c.build=last?{k:20+pth,t:0,dur:PATH_T}:{k:0,t:0,dur:LEVEL_T};ev(G,{t:'up',c:ci});return true;}
 // ---------- research cards ----------
 function hasLordSource(G,s){return G.castles.some(k=>k.owner===s&&(k.path===2||k.lords.length>0||(k.build&&k.build.k===22)))||G.sol.some(x=>x.o===s&&x.lord);}
 function cardOk(G,s,id){const p=G.pl[s],c=CARDS[id];if((p.cards[id]||0)>=c.max-0.01)return false;if(c.max===1&&p.rn<4)return false;if(c.tag==='lord')return hasLordSource(G,s);return true;}
@@ -331,7 +333,7 @@ function step(G,rdt){
     const busy=c.assault>0;
     if(c.owner===NEUTRAL){if(!busy){c.idle+=dt;if(c.idle>NEUT_IDLE&&c.size<c.base)addT(c,0,Math.min(c.base-c.size,(c.lv>=3?2:c.kind==='m'?1:1.2)*dt));}else c.idle=0;return;}
     const p=G.pl[c.owner];
-    if(c.build){c.build.t+=dt;if(c.build.t>=c.build.dur){const k=c.build.k;if(k>=20)c.path=k-20;else if(k===1)c.tl=Math.min(3,(c.tl|0)+1);else c.lv=Math.min(maxLv(c),c.lv+1);c.build=null;ev(G,{t:'built',c:i});}}
+    if(c.build){c.build.t+=dt;if(c.build.t>=c.build.dur){const k=c.build.k;if(k>=20){c.path=k-20;c.lv=maxLv(c);}else c.lv=Math.min(maxLv(c),c.lv+1);syncTowers(c);c.build=null;ev(G,{t:'built',c:i});}}
     const cap=capOf(c),ld=load(c);
     if(ld>cap)scaleT(c,c.size*Math.max(cap,ld-5*dt)/ld);
     else if(!c.build&&!busy&&!c.mode&&tot[c.owner]<caps[c.owner]){const g=Math.min(cap-ld,growRate(G,c)*dt);if(g>0)breed(G,c,g);}
@@ -437,13 +439,14 @@ function capture(G,i,by){
   if(G.pl[by].out)return;
   const oldLv=c.lv,wasWalled=isWalled(c);
   for(const L of c.lords)lordDie(G,L,c.x,c.y);c.lords=[];
-  c.owner=by;c.route=-1;c.build=null;c.mode=0;c.capital=-1;c.size=0;c.u=[0,0,0];c.fire=0;c.path=0;c.vp=0;c.lordCd=0;c.tl=Math.max(0,(c.tl|0)-1);c.tf=0;
+  c.owner=by;c.route=-1;c.build=null;c.mode=0;c.capital=-1;c.size=0;c.u=[0,0,0];c.fire=0;c.path=0;c.vp=0;c.lordCd=0;c.tf=0;
   if(c.kind!=='m'){c.lv=Math.max(1,c.lv-1);if(c.kind==='v'||c.kind==='f')c.kind='c';c.nw=0;}
+  syncTowers(c);
   // the victors march in
   const T=teamOf(G,by);for(const s of G.sol)if(s.hp>0&&s.st===2&&s.to===i&&teamOf(G,s.o)===T)enterCastle(G,s,c);
   // muster blocks of the old owner outside this castle are released
   if(prev!==NEUTRAL)for(const s of G.sol)if(s.st===3&&s.from===i)s.st=0;
-  const loot=Math.round(8*oldLv+(wasWalled?60:0));gainSouls(G.pl[by],loot);G.pl[by].taken++;ev(G,{t:'soul',x:c.x,y:c.y,s:by,n:loot,why:2});
+  const loot=Math.round(5*oldLv+(wasWalled?40:0));gainSouls(G.pl[by],loot);G.pl[by].taken++;ev(G,{t:'soul',x:c.x,y:c.y,s:by,n:loot,why:2});
   ev(G,{t:'cap',c:i,by,loot,drop:oldLv>c.lv});
   if(wasCap>=0&&prev!==NEUTRAL)eliminate(G,prev,by);
   supply(G);
@@ -512,36 +515,29 @@ function botThink(G,slot){
     {const w=(capped||wf)&&threat[capI]===0&&!capC.assault&&capC.size>capOf(capC)*0.75?1:0;if(capC.mode!==w)setMode(G,slot,capI,w);}
     const ctx={wells:mine.filter(ci=>C[ci].path===1||C[ci].kind==='m').length,souls,capped,towers:mine.some(ci=>C[ci].tl>0),walled:mine.some(ci=>G.adj[ci].some(({to})=>!isMine(to)&&isWalled(C[to])))};
     const buy=(cost,f)=>{if(p.souls-saving>=cost){if(f())return true;}else saving=Math.max(saving,cost);return false;};
-    // 1. the Throne's path first (Spawner, or Soul Well for the Harvester), then its level: army cap, growth, Hellgate requirement
-    if(capC.owner===slot&&!capC.build&&!capC.path&&capC.lv>=3&&!wf)buy(pathCost(G,slot),()=>choosePath(G,slot,capI,pe===3?1:3));
-    if(capC.owner===slot&&!capC.build&&capC.lv<maxLv(capC)&&(tot>cap*0.6||(capC.lv<3&&(G.gt>200||wf))||wf)&&(capC.path||capC.lv<3||wf))buy(upCost(G,slot,capC),()=>upgrade(G,slot,capI));
+    // 1. the Throne's levels first (army cap, growth, Hellgate requirement); the last one picks Spawner, or Soul Well for the Harvester
+    const hasCit=mine.some(ci=>C[ci].path===2||(C[ci].build&&C[ci].build.k===22));
+    const pathFor=ci=>{const c=C[ci];if(c.capital>=0)return pe===3?1:3;let pth=c.mode||fd[ci]>=2?1:[3,3,2,2][pe];if(!hasCit&&pth!==1&&pe!==3)pth=2;return pth;};
+    const up=ci=>upgrade(G,slot,ci,C[ci].lv===2&&C[ci].kind!=='m'?pathFor(ci):0);
+    if(capC.owner===slot&&!capC.build&&capC.lv<maxLv(capC)&&(tot>cap*0.6||G.gt>150||wf))buy(upCost(G,slot,capC),()=>up(capI));
     // 2. Hellgate for the Harvester, the wonder-first sims and stuck bots
     const hg=capC.owner===slot&&capC.lv>=3&&p.wb<0&&p.ws<WONDER_STAGES&&(G.opts.wonder!==0)&&hgo;
     if(hg)buy(WONDER_COST,()=>buildWonder(G,slot));
     // 3. research cards
     if(!SL.noRes){if(p.offer)pickCard(G,slot,botCard(G,slot,pe,ctx));
       if(!p.offer){const rc=researchCost(G,slot)+(pe===1?20:0);if(p.souls-saving>=rc){if(drawResearch(G,slot))pickCard(G,slot,botCard(G,slot,pe,ctx));}else if(!wf)saving=Math.max(saving,rc*0.5);}}
-    // 4. paths: Soul Wells in the rear, a Citadel for the lord, Spawners at the front
-    if(!wf){const hasCit=mine.some(ci=>C[ci].path===2||(C[ci].build&&C[ci].build.k===22));
-      for(const ci of mine){const c=C[ci];if(c.path||c.build||c.lv<3||c.kind==='m'||c.capital>=0)continue;
-        let pth=c.mode||fd[ci]>=2?1:[3,3,2,2][pe];if(!hasCit&&pth!==1&&pe!==3)pth=2;
-        if(buy(pathCost(G,slot),()=>choosePath(G,slot,ci,pth)))break;}}
     // 5. lords from idle Citadels
     if(!noArmy&&!wf)for(const ci of mine){const c=C[ci];if(c.path!==2)continue;const ls=lordStatus(G,slot,ci);if(ls.can||ls.why.startsWith('Needs')){buy(ls.price,()=>hireLord(G,slot,ci));break;}}
     // 6. other castle levels: Souls-mode castles earn more, front castles hold more
     if(!wf){let best=-1,bs=0;
       for(const ci of mine){const c=C[ci];if(c.build||c.lv>=maxLv(c)||c.capital>=0||threat[ci]>0)continue;
         const sc=(c.kind==='m'?2.5:1)*(c.mode?(pe===3?1.8:1.3):fd[ci]<=1?1.1:0.7)/(c.lv+1);if(sc>bs){bs=sc;best=ci;}}
-      if(best>=0)buy(upCost(G,slot,C[best])+20,()=>upgrade(G,slot,best));}
-    // 7. towers on the castles that face the enemy (the Turtle likes them most)
-    if(!wf&&!noArmy&&p.souls-saving>(pe===2?60:140)&&R()<(pe===2?0.7:0.3)){let best=-1,bs=-1;
-      for(const ci of mine){const c=C[ci];if(c.build||(c.tl|0)>=3||c.size<8||(fd[ci]>1&&!threat[ci]))continue;const sc=(3-(c.tl|0))*(1+(threat[ci]>0?1:0)+(c.capital>=0?0.5:0))+R();if(sc>bs){bs=sc;best=ci;}}
-      if(best>=0)fortify(G,slot,best);}
+      if(best>=0)buy(upCost(G,slot,C[best])+20,()=>up(best));}
     // surplus: never sit on a big hoard
     if(p.souls-saving>400&&diff>0){let spent=false;
       if(!SL.noRes&&!p.offer&&drawResearch(G,slot)){pickCard(G,slot,botCard(G,slot,pe,ctx));spent=true;}
       if(!spent&&capC.owner===slot&&capC.lv>=3&&p.wb<0&&p.ws<WONDER_STAGES&&p.souls>=WONDER_COST&&G.opts.wonder!==0){buildWonder(G,slot);spent=true;}
-      if(!spent)for(const ci of mine){const c=C[ci];if(!c.build&&c.lv<maxLv(c)&&threat[ci]===0&&p.souls>=upCost(G,slot,c)){upgrade(G,slot,ci);break;}}}
+      if(!spent)for(const ci of mine){const c=C[ci];if(!c.build&&c.lv<maxLv(c)&&threat[ci]===0&&p.souls>=upCost(G,slot,c)){up(ci);break;}}}
   }
   // spells: Horde Boost when many of our soldiers fight, Spies on fogged ground
   if(diff>=1){const res=diff===2?5:40;
@@ -646,9 +642,9 @@ function decodeInto(G,g){GG=G;const C=G.castles;
   G.time=g.tm||G.time;
   if(g.w&&!G.over){G.over=true;G.winner=g.w==='-'?null:g.w;G.winBy=g.wb||'';}
 }
-if(typeof module!=='undefined')module.exports={COLORS,NEUTRAL,LV,LVCOST,maxLv,UNIT,NU,SPAWN_MIX,PATHS,PATH_COST,PATH_T,LEVEL_T,CARDS,CARD_ID,TIER_MUL,tierOf,SPELLS,LORD_NAMES,PERS,MAPTYPES,MAPTHEME,MAPGEN,
-  WONDER_COST,WONDER_STAGES,WONDER_T,WONDER_HOLD,TOWER_COST,TOWER_T,TW_R,TW_FIRE,SOUL_YIELD,KILL_V,KILL_BACK,KILL_CAP,SPRING_GUARD,HORDE_DMG,HORDE_SPD,LORD_R,LORD_CD,MAX_SOL,SPEED_S,ROUTE_IV,ROUTE_PKT,FIRE,HIT_W,CD_W,DAY_LEN,
+if(typeof module!=='undefined')module.exports={COLORS,NEUTRAL,LV,LVCOST,maxLv,UNIT,NU,SPAWN_MIX,PATHS,PATH_T,LEVEL_T,CARDS,CARD_ID,TIER_MUL,tierOf,SPELLS,LORD_NAMES,PERS,MAPTYPES,MAPTHEME,MAPGEN,
+  WONDER_COST,WONDER_STAGES,WONDER_T,WONDER_HOLD,TW_R,TW_FIRE,SOUL_YIELD,KILL_V,KILL_BACK,KILL_CAP,SPRING_GUARD,HORDE_DMG,HORDE_SPD,LORD_R,LORD_CD,MAX_SOL,SPEED_S,ROUTE_IV,ROUTE_PKT,FIRE,HIT_W,CD_W,DAY_LEN,
   genMap,newGame,step,encode,decodeInto,decSol,encSol,teamOf,aliveTeams,checkWin,capture,eliminate,supply,mkRng,segX,
-  kill,squad,setRoute,upgrade,setMode,drawResearch,useSpell,setMix,fortify,choosePath,pickCard,buildWonder,hireLord,dispatch,setPour,
-  capOf,load,armyCap,musterCap,growRate,soulRate,passiveRate,modeRate,killSouls,defMul,isWalled,unitOk,upCost,pathCost,towerCost,towerFire,towerRange,researchCost,
+  kill,squad,setRoute,upgrade,setMode,drawResearch,useSpell,setMix,pickCard,buildWonder,hireLord,dispatch,setPour,
+  capOf,load,armyCap,musterCap,growRate,soulRate,passiveRate,modeRate,killSouls,defMul,isWalled,unitOk,upCost,lootOf,syncTowers,towerFire,towerRange,researchCost,
   cardCount,cardEffect,cardOk,recomputeMods,mod,spellCost,spellCd,spellR,spellDurOf,lordStatus,lordPrice,lordOf,lordMax,canLord,castleVision,nightLevel,fieldCap,needToTake,botThink,botView,garrisonFire};

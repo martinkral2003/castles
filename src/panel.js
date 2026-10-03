@@ -21,8 +21,8 @@ const cardsOf=k=>{const id=CARDS.findIndex(q=>q&&q.key===k);return id>=0&&mySlot
 const remoteSol=()=>NET.mode==='client'||NET.mode==='replay'?(G.csol||[]):G.sol;
 
 // ---------- commands ----------
-const CMDS={1:(s,a,b)=>squad(G,s,a,b),2:(s,a,b)=>setRoute(G,s,a,b),3:(s,a)=>upgrade(G,s,a),4:(s,a,b)=>setMode(G,s,a,b),5:s=>drawResearch(G,s),6:(s,a,b,c)=>useSpell(G,s,a,b,c),
-  9:(s,a)=>setMix(G,s,a),11:(s,a)=>fortify(G,s,a),12:(s,a,b)=>choosePath(G,s,a,b),13:(s,a)=>pickCard(G,s,a),14:s=>buildWonder(G,s),17:(s,a)=>hireLord(G,s,a)};
+const CMDS={1:(s,a,b)=>squad(G,s,a,b),2:(s,a,b)=>setRoute(G,s,a,b),3:(s,a,b)=>upgrade(G,s,a,b),4:(s,a,b)=>setMode(G,s,a,b),5:s=>drawResearch(G,s),6:(s,a,b,c)=>useSpell(G,s,a,b,c),
+  9:(s,a)=>setMix(G,s,a),13:(s,a)=>pickCard(G,s,a),14:s=>buildWonder(G,s),17:(s,a)=>hireLord(G,s,a)};
 // a throwing command must not wedge the host's peer loop (it would replay the same seq forever)
 function runCmd(slot,m){const f=CMDS[m[1]],a=m[2];if(!G||!f||!Number.isInteger(a))return false;try{return f(slot,a,+m[3]||0,+m[4]||0);}catch(e){console.error('command',m[1],e);return false;}}
 function issue(type,a,b=0,c=0){
@@ -55,7 +55,7 @@ function resetMix(){myMix=15;renderMix();}
 function renderMix(){const lord=myLords()>0;document.querySelectorAll('#mix [data-u]').forEach(b=>{const u=+b.dataset.u,on=String(!!((myMix>>u)&1));if(b.getAttribute('aria-pressed')!==on)b.setAttribute('aria-pressed',on);
   if(u===3&&b.classList.contains('off')===lord){b.classList.toggle('off',!lord);b.setAttribute('aria-disabled',String(!lord));}});}
 document.querySelectorAll('#mix [data-u]').forEach(b=>b.onclick=()=>{const u=+b.dataset.u;
-  if(u===3&&!myLords()){toast('No lord yet. Give a level 3 castle the Citadel path, then raise one there.',2800);return;}
+  if(u===3&&!myLords()){toast('No lord yet. Upgrade a castle to level 3 as a Citadel, then raise a lord there.',2800);return;}
   const m=myMix^(1<<u);if(!(m&7)){toast('Keep at least one kind of demon marching.',1600);return;}
   myMix=m;renderMix();issue(9,m);});
 function hordeArt(){const col=mySlot>=0?COLORS[mySlot]:COLORS[0],H=[24,30,42,50],d=Math.min(2.5,window.devicePixelRatio||1);
@@ -134,10 +134,10 @@ const secH=(t,x)=>`<div class="sec"><span>${t}</span>${x||''}</div>`;
 const costEl=k=>`<em class="cost" data-c="${k}">${gly('wisp')}<span></span></em>`;
 function reqTxt(t){const r=UNIT[t]&&UNIT[t].req;return t===0?'any castle':t===3?'raised in a Citadel':'a Spawner castle at level '+r+(t===1?' or higher':' or 6');}
 function upSub(c){const n=c.lv+1,q={...c,lv:n};if(c.kind==='m')return'+'+(passiveRate(G,{...q,sup:true})*G.sp).toFixed(1)+' souls/s at level '+n+(c.sup?'':' once linked to your Throne');
-  let t='Holds '+capOf(q)+' supply, breeds and mines souls faster';
+  let t='Holds '+capOf(q)+' supply, breeds and mines souls faster, stronger towers';
   if(c.capital>=0){const a=armyCap(G,mySlot);let b=a;c.lv=n;try{b=armyCap(G,mySlot);}finally{c.lv=n-1;}if(b>a)t+=', horde cap +'+(b-a);}
   for(let u=1;u<NU;u++)if(!unitOk(c,u)&&unitOk(q,u))t+=', breeds '+UNIT[u].name.toLowerCase()+'s';
-  return t+(n===3&&!c.path?', opens paths':'');}
+  return t;}
 const sigOf=s=>s.capital>=0?'crown':s.kind==='m'?'wisp':s.owner===NEUTRAL?(s.kind==='f'?'skull':'hut'):'keep';
 const headH=(s,col)=>`<div class="ph"><span class="sig" style="--c:${col}">${gly(sigOf(s))}</span><div class="t"><div class="nm"><b data-n></b><span class="kd" data-kd></span></div><small data-st></small></div><button class="x" aria-label="Close">${gly('x')}</button></div><div class="chips" data-ch></div><div class="comp" data-cp></div>`;
 const pingsH=()=>`<div class="pings"><button data-ping="0"><i class="pm">!</i>Attack here</button><button data-ping="1"><i class="pm d">+</i>Defend here</button></div>`;
@@ -163,17 +163,15 @@ function ownPanel(c,p,ls,lords){const spring=c.kind==='m';let h=headH(c,COLORS[m
     if(p.ws>=n||p.wb>=0)h+='<p class="hint hg" data-wd></p>'+(p.wb>=0?'<div class="bar-prog hg"><i data-wp></i></div>':'');
     else if(c.lv<3)h+=`<p class="hint">Raise your Throne to level 3 to begin the Hellgate: ${n} stages, then hold the Throne ${mins} minutes to win.</p>`;
     else h+=`<button class="act hg" data-wonder><b>Raise stage ${p.ws+1} of ${n}</b>${costEl('wo')}<small>${Math.round(WONDER_T)} s each. After the last, hold your Throne ${mins} minutes to win. Everyone is warned.</small></button>`;}
-  if(!spring&&!c.path&&!c.build&&c.lv>=3){h+=secH('Choose a path',costEl('pa'))+'<div class="paths">';
-    for(let q=1;q<PATHS.length;q++)if(PATHS[q]&&!(q===2&&c.capital>=0))h+=`<button class="act pa pa${q}" data-path="${q}"><b>${escH(PATHS[q].name)}</b><small>${escH(PATHS[q].desc)}</small></button>`;
-    h+=`</div><p class="hint">Permanent. Takes ${Math.round(PATH_T)} s, and breeding pauses meanwhile.</p>`;}
   if(c.path===2){h+=secH('Lord');const own=ls&&ls.lord;
     lords.forEach((l,i)=>{h+=`<div class="lord">${gly('lord')}<div><b>Lord ${escH(l.nm||'')}</b><small data-lh="${i}"></small><div class="bar-prog hp"><i data-lhp="${i}"></i></div></div></div>`;});
     if(own&&!lords.some(l=>l===own||l.id!=null&&l.id===own.id))h+=`<p class="hint">Lord ${escH(own.nm||'')} of this citadel is out in the field.</p>`;
     else if(ls&&!own)h+=`<button class="act lordb" data-lord><b>${gly('lord')}Raise a lord</b>${costEl('lo')}<small data-lw></small></button>`;}
-  if(!c.build&&c.lv<maxLv(c))h+=secH(spring?'Deepen the spring':'Raise the castle')+`<button class="act up" data-up><b>${spring?'Spring level '+(c.lv+1):escH(LVNAME[c.lv+1]||'Den')+', level '+(c.lv+1)}</b>${costEl('up')}<small data-ups></small></button>`;
-  h+=secH('Towers','<span class="pips">'+[1,2,3].map(i=>`<i class="${i<=(c.tl|0)?'on':i===(c.tl|0)+1&&c.build&&c.build.k===1?'now':''}"></i>`).join('')+'</span>');
-  if((c.tl|0)>=3)h+=`<p class="hint">Fully fortified: the ring of towers fires on anything that comes near while the castle holds troops.</p>`;
-  else h+=`<button class="act tw" data-tw><b>${gly('tower')}${(c.tl|0)?'Raise the towers to level '+((c.tl|0)+1):'Build a ring of towers'}</b>${costEl('tw')}<small data-tws></small></button>`;
+  if(!c.build&&c.lv<maxLv(c)){
+    if(!spring&&c.lv===maxLv(c)-1){h+=secH('Specialise and rise to level '+(c.lv+1),costEl('pa'))+'<div class="paths">';
+      for(let q=1;q<PATHS.length;q++)if(PATHS[q]&&!(q===2&&c.capital>=0))h+=`<button class="act pa pa${q}" data-path="${q}"><b>${escH(PATHS[q].name)}</b><small>${escH(PATHS[q].desc)}</small></button>`;
+      h+=`</div><p class="hint" data-ups></p>`;}
+    else h+=secH(spring?'Deepen the spring':'Raise the castle')+`<button class="act up" data-up><b>${spring?'Spring level '+(c.lv+1):escH(LVNAME[c.lv+1]||'Den')+', level '+(c.lv+1)}</b>${costEl('up')}<small data-ups></small></button>`;}
   if(c.route>=0)h+=`<div class="rt"><span data-rt></span><button data-stop>Stop route</button></div>`;
   if(hasMates())h+=pingsH();
   return h;}
@@ -181,10 +179,9 @@ function bindPanel(P){const on=(q,f)=>P.querySelectorAll(q).forEach(b=>b.onclick
   on('.x',()=>{sel=-1;updatePanel();});
   on('[data-mode]',b=>issue(4,sel,+b.dataset.mode));
   on('[data-wonder]',()=>issue(14,0));
-  on('[data-path]',b=>issue(12,sel,+b.dataset.path));
+  on('[data-path]',b=>issue(3,sel,+b.dataset.path));
   on('[data-lord]',()=>issue(17,sel));
   on('[data-up]',()=>issue(3,sel));
-  on('[data-tw]',()=>issue(11,sel));
   on('[data-stop]',()=>issue(2,sel,-1));
   on('[data-ping]',b=>sendPing(sel,+b.dataset.ping));}
 function tickPanel(P,c,s,p,mine,visible,ls,lords){
@@ -207,7 +204,7 @@ function tickPanel(P,c,s,p,mine,visible,ls,lords){
   if(visible&&c.assault)ch+=chip('Under attack','bad');
   if(mine){if(!c.sup&&!(c.capital>=0))ch+=chip('Cut off from the Throne','warn');}
   else{if(lords.length)ch+=chip(gly('lord')+'Lord inside','gold');
-    ch+=chip(gly('wisp')+'Loot '+Math.round(8*(s.lv||1)+(isWalled(c)?60:0)),'soul');
+    ch+=chip(gly('wisp')+'Loot '+lootOf(s),'soul');
     if(s.owner!==NEUTRAL&&s.kind!=='m'&&s.lv>1)ch+=chip('Drops to level '+(s.lv-1)+(pth?' and loses its path':'')+' if taken');}
   putH(P.querySelector('[data-ch]'),ch);
   let cp='';if(s.u)for(let t=0;t<NU;t++){const n=Math.floor(s.u[t]||0);if(n>0)cp+=`<span class="cp">${gly(UGL[t])}<b>${n}</b><small>${escH(UNIT[t].short)}</small></span>`;}
@@ -225,16 +222,16 @@ function tickPanel(P,c,s,p,mine,visible,ls,lords){
     else if(c.kind!=='m')t='';putT(mh,t);mh.hidden=!t;mh.classList.toggle('warn',!!c.mode&&!c.sup&&c.capital<0);}
   putT(P.querySelector('[data-armp]'),c.build?'building…':'+'+(growRate(G,{...c,mode:0})*G.sp).toFixed(1)+' troops/s');
   putT(P.querySelector('[data-soulp]'),'+'+(modeRate(G,{...c,mode:1})*G.sp).toFixed(1)+' souls/s');
-  if(c.build){const b=c.build,pr=b.dur>1?b.t/b.dur:b.t;putT(P.querySelector('[data-bl]'),(b.k>=20?'Becoming a '+(PATHS[b.k-20]?PATHS[b.k-20].name:'new path'):b.k===1?'Raising the towers to level '+((c.tl|0)+1):'Rising to level '+(c.lv+1))+' · breeding paused');
+  if(c.build){const b=c.build,pr=b.dur>1?b.t/b.dur:b.t;putT(P.querySelector('[data-bl]'),(b.k>=20?'Rising to level 3 as a '+(PATHS[b.k-20]?PATHS[b.k-20].name:'specialist'):'Rising to level '+(c.lv+1))+' · breeding paused');
     const bp=P.querySelector('[data-bp]');if(bp)bp.style.width=Math.round(Math.max(0,Math.min(1,pr))*100)+'%';}
   const wd=P.querySelector('[data-wd]');if(wd){if(p.ws>=WONDER_STAGES)putT(wd,'The Hellgate stands open. Hold your Throne: '+fmtClock((WONDER_HOLD-p.wh)/G.sp)+' left'+(c.assault?' (under attack, losing time)':'')+'.');
     else{putT(wd,'Raising stage '+(p.ws+1)+' of '+WONDER_STAGES+(c.assault?' (paused while under attack)':'')+'.');const wp=P.querySelector('[data-wp]');if(wp)wp.style.width=Math.round(Math.max(0,Math.min(1,p.wb/WONDER_T))*100)+'%';}}
   cost('wo',WONDER_COST);
-  if(P.querySelector('[data-path]')){const v=pathCost(G,mySlot);cost('pa',v);P.querySelectorAll('[data-path]').forEach(b=>b.disabled=!(souls>=v));}
+  if(P.querySelector('[data-path]')){const v=upCost(G,mySlot,c);cost('pa',v);P.querySelectorAll('[data-path]').forEach(b=>b.disabled=!(souls>=v)||!!c.build);}
   if(ls){cost('lo',ls.price,!ls.can);putT(P.querySelector('[data-lw]'),!ls.can&&typeof ls.why==='string'&&ls.why?ls.why:'One per Citadel. He leads your blocks; demons near him fight harder.');}
   lords.forEach((l,i)=>{const mx=l.max||l.hp||1;putT(P.querySelector('[data-lh="'+i+'"]'),'Serves here · '+Math.ceil(l.hp)+' / '+Math.round(mx)+' hp'+(l.rk?' · rank '+l.rk:''));const e=P.querySelector('[data-lhp="'+i+'"]');if(e)e.style.width=Math.round(Math.max(0,Math.min(1,l.hp/mx))*100)+'%';});
   if(P.querySelector('[data-up]')){cost('up',upCost(G,mySlot,c),!!c.build);putT(P.querySelector('[data-ups]'),upSub(c));}
-  if(P.querySelector('[data-tw]')){const n=(c.tl|0)+1;cost('tw',towerCost(G,mySlot,c),!!c.build);putT(P.querySelector('[data-tws]'),'Level '+n+': shoots enemies within '+Math.round(TW_R[n]*(1+(mod(G,mySlot,'tower')-1)/2))+' of the castle, +'+Math.round(n*6)+'% defence.');}
+  else if(P.querySelector('[data-path]'))putT(P.querySelector('[data-ups]'),upSub(c)+'. Permanent.');
   const rt=P.querySelector('[data-rt]');if(rt){const d=G.castles[c.route],full=d&&isTeam(d.owner)&&load(d)>=capOf(d)*.95;putT(rt,!d?'':full?'Route to '+G.names[c.route]+' waits: that castle is full':'Troops stream to '+G.names[c.route]);}
 }
 // keeps the toast clear of the tutorial card and the Hellgate banner
