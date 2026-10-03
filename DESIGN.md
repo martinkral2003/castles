@@ -18,6 +18,16 @@ no sound · procedural graphics, single HTML file · 8 hand-tuned map types with
 **Removed in revision 2**: promotion, train masks, Summon, altars, Sacrifice button, Offer mode and pilgrims, road spires (replaced by castle
 towers), the five spell-learning cards, spell slots.
 
+**Revision 3 (2026-10-03, later the same day) overrides revision 2 where they differ** (the sections below still describe revision 2; the code is right):
+* **Three castle levels** (Throne too), `LV = [null,{cap:45,g:.35},{cap:90,g:.6},{cap:150,g:.95}]`, `LVCOST = [0,70,160]`. The Throne starts at level 1, holds ×1.4 and breeds ×1.25
+  (`lvg(c)`). `armyCap = (150 + 120·throneLevel) × cards.acap`. The path is chosen at level 3 (the top). A Spawner (path 3, level 3) breeds minion/lesser/greater in shares
+  `62/28/10`, the Throne's Spawner `50/35/15` (`SPAWN_MIX[3]`, `SPAWN_MIX.T`); `UNIT.req` is 3 for both demons. Capture drops one level. Art: a Throne is drawn with the grand (old level 4-6) sprites (`artLv`).
+* **Research is one tap**: the Research button pays and shows the two cards at once (no draw screen). **Card power is tiered by draws taken**: `tierOf(rn)` = 0 for the first 3 draws, 1 for the next 4,
+  2 afterwards, with `TIER_MUL = [.5, 1, 1.8]`. `p.cards[id]` is the summed power (capped at the card's `max`), `p.otier` the tier of the pending offer; unique cards (Siegebreakers, Blood Oath) only
+  appear from the 5th draw and count as 1. Card descriptions no longer contain numbers; the headline `cardEffect(id, mult)` shows the value of this pick.
+* **Two spells only**: 0 Horde Boost, 1 Spies. Hellfire and its Mastery card are gone (17 cards, `p.cd` has 2 entries, no `G.fires`, no `fr` in the snapshot). `kill` is exported for tests.
+* Sims on these rules (60 duels, 32 bot games): Harvester vs Aggressive 25-26, 4-6 player median about 19 min, none unfinished, about half end by Hellgate.
+
 ---------------------------------------------------------------------------------------------------------------------
 
 ## 1. Rules

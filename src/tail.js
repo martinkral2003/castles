@@ -78,7 +78,7 @@ function updateVision(){
 // ---------- effects ----------
 // layers: 0 ground decals, 1 world (smoke, debris), 2 light (additive, drawn after the night tint), 3 text
 const FXMAX=620,FXL={corpse:0,scorch:0,ring:1,p:1,sm:1,db:1,crk:1,em:2,ws:2,bolt:2,fl:2,sr:2,portal:2,beam:2,bub:2,txt:3};
-let fxRef=null;const FIRESEEN=new Map(),SMK=new Map();
+let fxRef=null;const SMK=new Map();
 const fxOk=n=>fx.length+n<FXMAX;
 function fxRing(x,y,col,big){fx.push({k:'ring',L:1,x,y,col,t:performance.now(),big,life:big?950:700});}
 function fxBurst(x,y,col,n,spd,life=600,hot,t0){const t=t0||performance.now();n=Math.min(n,FXMAX-fx.length);for(let i=0;i<n;i++){const a=Math.random()*6.283,v=spd*(0.4+Math.random()*0.8);
@@ -91,11 +91,6 @@ function fxWisps(x,y,n,sp,h=1){const t=performance.now();n=Math.min(n,FXMAX-fx.l
 function fxFlash(x,y,r,col,a,life){fx.push({k:'fl',L:2,x,y,r,col,a,t:performance.now(),life});}
 function fxShock(x,y,r0,r1,col,w,life,a=.9){fx.push({k:'sr',L:2,x,y,r0,r1,col,w,a,t:performance.now(),life});}
 const onScreen=(x,y)=>{const sx=x*VS.s+VS.ox,sy=y*VS.s+VS.oy;return sx>-60&&sx<VS.w+60&&sy>-80&&sy<VS.h+60;};
-function fireFx(x,y,now){const key=Math.round(x)+','+Math.round(y),l=FIRESEEN.get(key);if(l&&now-l<3000)return;if(FIRESEEN.size>40)FIRESEEN.clear();FIRESEEN.set(key,now);
-  if(!visAt(x,y))return;const fr=G.fires.find(f=>Math.abs(f.x-x)<2&&Math.abs(f.y-y)<2),R=fr&&fr.r||45;
-  fx.push({k:'scorch',L:0,x,y,s:R/45,t:now,life:10000});fxFlash(x,y-8,R*1.9,'#ff7020',1,700);fxFlash(x,y,R*1.2,'#ff4a12',.45,2600);
-  fxShock(x,y,R*.3,R*1.7,'#ffb24a',6,750);fxShock(x,y,R*.2,R*1.1,'#fff0c0',3,450,.8);fxBurst(x,y-6,'#ffb04a',22,80,900,1);fxBurst(x,y-6,'#ffe08a',10,50,700,1);
-  fxSmoke(x,y-6,7,1.7,'#2a2220',2600,R*.5);fxDebris(x,y,8,90,'#2e2420');fxEmbers(x,y,10,R*.6,EMB,1600);if(onScreen(x,y))camShake(3.5);}
 function capFx(c){const f=footOf(c),col=colOf(c.owner);fxRing(c.x,c.y,col,true);fxShock(c.x,c.y,f.rx*.4,f.rx*2,col,5,900,.7);fxBurst(c.x,c.y-8,col,12,70,800);
   fxSmoke(c.x,c.y-6,6,1.6,'#3d3430',2600,f.rx*.5);fxEmbers(c.x,c.y-f.ry*.4,10,f.rx*.6,EMB,1300);fxFlash(c.x,c.y-f.ry*.6,f.rx*1.4,col,.55,800);}
 function upFx(c){const f=footOf(c);fxRing(c.x,c.y,'#ffc861',true);fxEmbers(c.x,c.y-f.ry*.3,12,f.rx*.7,'#ffcf6a',1400);fxFlash(c.x,c.y-f.ry*.5,f.rx*1.3,'#ffb84a',.4,800);}
@@ -104,7 +99,6 @@ function onEv(e,now){const c=e.c!=null?G.castles[e.c]:null;let f;
   case 'die':if(!solVisible(e.o,e.x,e.y))break;if(fxOk(90))fx.push({k:'corpse',L:0,x:e.x,y:e.y,col:colOf(e.o),u:e.u|0,t:now,life:3800,fl:Math.random()<.5});
     if(fxOk(170)){fxEmbers(e.x,e.y-5,e.u>=2?5:2,5,EMB,900);fxSmoke(e.x,e.y-3,1,.7,'#2b2422',1000,3);}break;
   case 'shot':if(fxOk(60)&&(visAt(e.x,e.y)||visAt(e.tx,e.ty))){fx.push({k:'bolt',L:2,x:e.x,y:e.y-6,tx:e.tx,ty:e.ty-5,arc:8,t:now,life:340});fxBurst(e.tx,e.ty-5,'#ffb347',2,24,350,1,now+330);}break;
-  case 'fire':fireFx(e.x,e.y,now);break;
   case 'spy':if(!(allSeeing()||isTeam(e.s)))break;fxFlash(e.x,e.y,110,EYEC,.6,900);fxShock(e.x,e.y,20,e.r||200,EYEC,3,1200,.6);break;
   case 'horde':if(isTeam(e.s)){const ci=G.capIdx[e.s],k=ci!==undefined?G.castles[ci]:null;if(k&&isVisibleC(ci)){f=footOf(k);fxShock(k.x,k.y,10,f.rx*3,'#ff3a24',5,900);fxFlash(k.x,k.y-f.ry*.5,f.rx*1.6,'#ff2a14',.55,800);}}
     else toast(ownerName(e.s)+' roused their horde!',2200);break;
@@ -125,8 +119,7 @@ function onEv(e,now){const c=e.c!=null?G.castles[e.c]:null;let f;
     if(e.s===mySlot)toast((nm||'Your lord')+' has fallen.',3000);else if(v)toast(ownerName(e.s)+'’s '+(nm||'lord')+' has fallen!',2600);break;}
   }}
 function consumeEvents(){const now=performance.now(),remote=remoteView();
-  if(fx!==fxRef){fxRef=fx;prevLook=G.castles.map(c=>c.lv*32+(c.path|0)*4+(c.tl|0));SMK.clear();FIRESEEN.clear();}
-  if(remote)for(const f of G.fires)if(G.gt>=f.at)fireFx(f.x,f.y,now);
+  if(fx!==fxRef){fxRef=fx;prevLook=G.castles.map(c=>c.lv*32+(c.path|0)*4+(c.tl|0));SMK.clear();}
   if(G.events.length){for(const e of G.events){try{onEv(e,now);}catch(err){}}G.events.length=0;}
   G.castles.forEach((c,i)=>{
     if(prevOwner[i]!==c.owner){if(prevOwner[i]!==undefined&&isVisibleC(i))capFx(c);if(c.owner!==NEUTRAL&&stats)stats.taken[c.owner]++;prevOwner[i]=c.owner;}
@@ -320,11 +313,6 @@ function frame(now){
   ctx.globalCompositeOperation='lighter';
   for(const g of EMQ)glowAt(g.x,g.y,g.r,g.col,g.a,g.hot);
   drawFx(2,now,px);
-  // pending Hellfire: red glow on the ground and meteors falling in
-  for(const f of G.fires){const left=f.at-G.gt;if(left<-0.05||!(visAt(f.x,f.y)||isTeam(f.s)))continue;const R=f.r||45,q=Math.max(0,Math.min(1,1-left/1.6));
-    glowEl(f.x,f.y,R*1.25,R*.95,'#ff3a14',.12+.3*q);
-    if(left<0.8)for(let m=0;m<9;m++){const a=m*2.39+f.x,rr=R*((m*37%10)/10),tx=f.x+Math.cos(a)*rr,ty=f.y+Math.sin(a)*rr*.75,k2=Math.max(0,left-m*.02)/.8,sx=tx+70*k2,sy=ty-210*k2;
-      for(let j=4;j>=0;j--){const u=j/4;glowAt(sx+u*22,sy-u*66,(5.5-j)*1.2,j?'#ff6a1a':'#ffd27a',(1-u)*.85,!j);}}}
   for(const o of G.scouts)if(isTeam(o.s)||allSeeing())glowAt(o.x,o.y,40,EYEC,.25+.08*Math.sin(t*2));
   ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
   // Spies: the revealed circle and its eye
@@ -357,10 +345,6 @@ function frame(now){
     ctx.strokeStyle=col;ctx.lineWidth=Math.max(3,2.5*px);ctx.globalAlpha=1-k;ctx.beginPath();ctx.ellipse(c.x,c.y,f.rx+12+k*30,(f.ry+10+k*30)*.75,0,0,7);ctx.stroke();ctx.globalAlpha=1;
     const bx=c.x,by=c.y-f.ry-40*Math.max(px,.5),br=Math.max(8,10*px);ctx.fillStyle=col;ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1.5,2*px);ctx.beginPath();ctx.arc(bx,by,br,0,7);ctx.fill();ctx.stroke();
     ctx.fillStyle='#fff';ctx.font=F(700,br*1.3);ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(p.type?'+':'!',bx,by+1);}
-  // pending Hellfire: warning circle with a turning rune ring
-  for(const f of G.fires){const left=f.at-G.gt;if(left<-0.05||!(visAt(f.x,f.y)||isTeam(f.s)))continue;const R=f.r||45;
-    ctx.strokeStyle='rgba(255,70,36,'+(0.55+0.35*Math.sin(now/90))+')';ctx.lineWidth=Math.max(2.5,2*px);ctx.setLineDash([7,6]);ctx.lineDashOffset=now/40;ctx.beginPath();ctx.arc(f.x,f.y,R,0,7);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle='rgba(255,60,30,.10)';ctx.fill();ctx.strokeStyle='rgba(255,170,80,.5)';ctx.lineWidth=Math.max(1,px);ctx.beginPath();for(let q=0;q<12;q++){const a=q*Math.PI/6+t*.8;ctx.moveTo(f.x+Math.cos(a)*R*.72,f.y+Math.sin(a)*R*.72);ctx.lineTo(f.x+Math.cos(a)*R*.84,f.y+Math.sin(a)*R*.84);}ctx.stroke();}
   // armed spell: targeting circle
   if(ai>=0&&canAct()){const col=SPC[ai]||'#ffffff';
     {const w=aimS?toWorld(aimS):{x:CAM.x,y:CAM.y},R=typeof spellR==='function'?spellR(G,mySlot,ai):45,on=aimS?1:.55;
@@ -467,7 +451,7 @@ function hitRoad(w){let best=null,bd=(24/VS.s)**2;if(mySlot<0)return null;
 const PT=new Map();let pinch=null,pourTimer=0;
 function canAct(){return G&&!G.over&&mySlot>=0&&!G.pl[mySlot].out;}
 function castAt(w,ci){const id=armedSpell(),S=spellOf(id);if(!S||S.kind!=='point'){armedAb=-1;updateBar();return;}
-  issue(6,armedAb,Math.round(Math.max(0,Math.min(G.W,w.x))),Math.round(Math.max(0,Math.min(G.H,w.y))));toast(id===2?'Hellfire is falling.':'Your spies slip out.',1600);armedAb=-1;updateBar();}
+  issue(6,armedAb,Math.round(Math.max(0,Math.min(G.W,w.x))),Math.round(Math.max(0,Math.min(G.H,w.y))));toast('Your spies slip out.',1600);armedAb=-1;updateBar();}
 cv.addEventListener('pointerdown',e=>{
   if(!G)return;const p=local(e);aimS=p;PT.set(e.pointerId,p);try{cv.setPointerCapture(e.pointerId)}catch(_){}
   if(PT.size===2){const [a,b]=[...PT.values()];pourStop();clearTimeout(pourTimer);gesture={mode:'none'};

@@ -21,7 +21,7 @@ function closeOv(){$('#ov').hidden=true;}
 let toastT=0;function toast(t,ms=3200){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms);}
 
 $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Citadel','Spawner'][i]);
-  const spells=kv(()=>SPELLS.map(s=>s.name).join(', '),'Horde Boost, Spies, Hellfire');
+  const spells=kv(()=>SPELLS.map(s=>s.name).join(', '),'Horde Boost, Spies');
   overlay(`<h3>How to play</h3><div class="help">
 <p class="lead">Castles breed minions. Souls are your only currency, and fighting is the fastest way to earn them.</p>
 <section><h4>Keep your Throne</h4><p>Your Throne is the castle under the crowned skull. Lose it and you are out; a team is out when all its Thrones have fallen.</p></section>
@@ -31,11 +31,11 @@ $('#b-help').onclick=()=>{const pn=i=>kv(()=>PATHS[i].name,['','Soul Well','Cita
 <li><b>Kills</b>: every enemy soldier you kill pays a few souls, and the loser gets a little back, so even a lost fight is not wasted. Payouts are capped, so one huge battle cannot decide the game.</li>
 <li><b>Soul springs</b> (placed fairly between rivals and guarded by neutrals) and ${pn(1)}s trickle souls on their own; captured castles pay loot.</li></ul></section>
 <section><h4>Spend souls on</h4><ul>
-<li><b>Levels</b>: more room and faster breeding, up to 5 (your Throne up to 6).</li>
-<li><b>Paths</b> at level 3, permanent: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser demons, and greater demons from level 5).</li>
+<li><b>Levels</b>: three of them, more room and faster breeding each. Level 3 unlocks a path.</li>
+<li><b>Paths</b> at level 3, permanent: ${pn(1)} (steady souls), ${pn(2)} (walled and sturdy, sees far, hires a lord; not for a Throne), ${pn(3)} (breeds fast; the only castle that makes lesser and, rarely, greater demons).</li>
 <li><b>Towers</b>: one purchase raises a ring of towers round a castle that shoot anything nearby. Upgrade them up to level 3.</li>
-<li><b>Research</b>: draw two random cards and keep one. Each draw costs a little more.</li>
-<li><b>Spells</b>: all three are ready from the start: ${spells}. Cards make them stronger.</li>
+<li><b>Research</b>: one tap draws two cards and you keep one. Early cards are weak, later ones much stronger, and each draw costs a little more.</li>
+<li><b>Spells</b>: both are ready from the start: ${spells}. Cards make them stronger.</li>
 <li><b>Lords</b>: each ${pn(2)} hires one lord, a huge named demon whose aura drives nearby troops. Turn on the Lord chip and he leads your next big block.</li></ul></section>
 <section><h4>Move your horde</h4><ul>
 <li><b>Hold</b> a road beside your castle: minions gather at the gate. Let go and they march as one block. Dragging outward from the castle works too.</li>
@@ -91,9 +91,9 @@ const TUT=[
  {h:'Take a castle',p:'At a hovel or an enemy castle your minions fight the garrison. When it hits zero, the castle is yours. Take one.',ok:()=>G.castles.filter(c=>c.owner===mySlot).length>=2},
  {h:'Mine souls',p:'Souls are your only currency. Tap a castle behind your lines and switch it from Army to Souls: it stops breeding and makes souls instead. Kills pay a few too.',ok:()=>G.castles.some(c=>c.owner===mySlot&&c.mode)},
  {h:'Grow',p:'Spend souls on a castle level: more room, faster breeding. At level 3 a castle can take a path: Soul Well, Citadel or Spawner.',ok:()=>G.castles.some(c=>c.owner===mySlot&&(c.build||c.path))},
- {h:'Research',p:'Tap Research, draw two cards and keep one. Each draw costs a little more.',ok:()=>G.pl[mySlot].rn>0},
+ {h:'Research',p:'Tap Research: it draws two cards at once, keep one. Early cards are weak, later ones much stronger.',ok:()=>G.pl[mySlot].rn>0},
  {h:'Towers',p:'In a castle panel, buy towers. A ring of towers shoots anyone who comes near, and you can upgrade it twice.',ok:()=>G.castles.some(c=>c.owner===mySlot&&((c.tl|0)>0||(c.build&&c.build.k===1)))||G.time-CAMP.t0>90},
- {h:'Spells',p:'Your three spells are ready. Spies lift the fog for a moment, Hellfire burns a crowd, Horde Boost rallies every soldier you have. Cast one.',ok:()=>G.pl[mySlot].cd.some(v=>v>G.gt)},
+ {h:'Spells',p:'Both spells are ready. Spies lift the fog for a moment, Horde Boost rallies every soldier you have. Cast one.',ok:()=>G.pl[mySlot].cd.some(v=>v>G.gt)},
  {h:'Stronger demons',p:'Minions are weak. A Spawner castle (a level 3 path) breeds lesser demons, and greater demons from level 5.',ok:()=>myDemons()>=CAMP.d0+3||G.time-CAMP.t0>120},
  {h:'Victory',p:'Gather a big army of demons and take the enemy Throne, the castle under the crowned skull. Your rival wakes up soon.',ok:()=>false}];
 function tutTick(){const el=$('#tut');if(!CAMP||!CAMP.tut||!G||G.over||mySlot<0){if(!el.hidden)el.hidden=true;return;}

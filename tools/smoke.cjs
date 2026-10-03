@@ -53,10 +53,10 @@ const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!o
   const flow = await ev(page, () => { const me = mySlot, ci = G.home[me], c = G.castles[ci]; G.pl[me].souls = 900; c.u[0] = Math.max(c.u[0], 20); c.size = c.u[0] + c.u[1] + c.u[2];
     const m = setMode(G, me, ci, 1), s0 = G.pl[me].souls; for (let i = 0; i < 400; i++) step(G, 0.05); G.events.length = 0; const gained = Math.round(G.pl[me].souls - s0);
     setMode(G, me, ci, 0); const f = fortify(G, me, ci); for (let i = 0; i < 200; i++) step(G, 0.05); G.events.length = 0;
-    const h = useSpell(G, me, 0), sp = useSpell(G, me, 1, 400, 600), fi = useSpell(G, me, 2, 500, 800); return { m, gained, f, tl: c.tl, h, sp, fi }; });
+    const h = useSpell(G, me, 0), sp = useSpell(G, me, 1, 400, 600); return { m, gained, f, tl: c.tl, h, sp }; });
   check(flow.m && flow.gained > 0, 'Souls mode yields souls ' + JSON.stringify(flow));
   check(flow.f && flow.tl === 1, 'fortify raises a tower ring ' + flow.tl);
-  check(flow.h && flow.sp && flow.fi, 'all three spells can be cast from the start');
+  check(flow.h && flow.sp, 'both spells can be cast from the start');
   await ev(page, () => { sel = G.home[mySlot]; panelKey = ''; updatePanel(); });
   await page.waitForTimeout(700); await shot(page, '08-panel-after');
   await ev(page, () => { sel = -1; updatePanel(); for (let i = 0; i < 60; i++) step(G, 0.05); });

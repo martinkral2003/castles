@@ -4,8 +4,9 @@ const COLORS=['#ff4b4b','#4aa3ff','#46d68c','#ffc83d','#b277ff','#ff8a3d','#35d4
 const NEUTRAL=9,ROUTE_IV=2.4,ROUTE_PKT=12;
 const TUNE=typeof process!=='undefined'&&process.env&&process.env.TUNE?JSON.parse(process.env.TUNE):{}; // sim tuning overrides (Node only)
 const SPEED_S=25,ENGAGE=26,MELEE=7,HIT_F=0.36,CD_F=0.9,HIT_W=0.155,CD_W=1.25,FIRE=TUNE.FIRE??0.115,MAX_SOL=560;
-const LV=[null,{cap:40,g:.35},{cap:70,g:.55},{cap:100,g:.8},{cap:130,g:1.0},{cap:160,g:1.2},{cap:190,g:1.4}];
-const LVCOST=[0,50,100,160,230,320];let GG=null;
+const LV=[null,{cap:45,g:.35},{cap:90,g:.6},{cap:150,g:.95}]; // three levels; the Throne holds 40% more and breeds 25% faster than a castle of its level
+const lvg=c=>LV[c.lv].g*(c.capital>=0?1.25:1);
+const LVCOST=[0,70,160];let GG=null;
 const TOWER_COST=[60,110,170],TOWER_T=8,TW_R=[0,80,90,100],TW_FIRE=[0,5,9,14];
 const WALL_MUL=TUNE.WALL??0.55,SOUL_YIELD=TUNE.SY??3.0,KILL_V=TUNE.KV??0.8,KILL_BACK=0.5,KILL_CAP=TUNE.KC??45,KILL_WIN=10,CATCHUP=0,SPRING_GUARD=30,LORD_R=85,LORD_CD=40,LORD_HEAL=0.4;
 const PATHS=[null,
@@ -17,41 +18,41 @@ const WONDER_COST=TUNE.WG??650,WONDER_T=45,WONDER_STAGES=5,WONDER_HOLD=TUNE.WH??
 // sup = supply weight (army cap and castle capacity), gcost = breeding it eats, req = Spawner level needed (the lord is hired, never bred)
 const UNIT=[{name:'Minion',short:'Minion',hp:.75,spd:1,dmg:.27,wall:1,sup:1,gcost:1,req:1},
  {name:'Lesser demon',short:'Lesser',hp:1.45,spd:1,dmg:.4,wall:1.1,sup:2,gcost:2.2,req:3},
- {name:'Greater demon',short:'Greater',hp:2.2,spd:1.5,dmg:.62,wall:1.8,sup:5,gcost:7,req:5},
+ {name:'Greater demon',short:'Greater',hp:2.2,spd:1.5,dmg:.62,wall:1.8,sup:5,gcost:7,req:3},
  {name:'Lord',short:'Lord',hp:14,spd:.9,dmg:1.15,wall:2.2,sup:8,gcost:0,req:0}];
 const NU=3;
-// share of a Spawner's breeding spent on [minion, lesser, greater] by castle level
-const SPAWN_MIX={3:[.75,.25,0],4:[.7,.3,0],5:[.55,.3,.15],6:[.45,.35,.2]};
+// share of a Spawner's breeding spent on [minion, lesser, greater]; T = the Throne
+const SPAWN_MIX={3:[.62,.28,.1],T:[.5,.35,.15]};
 const HORDE_DMG=.3,HORDE_SPD=.2;
 const SPELLS=[
  {id:0,name:'Horde Boost',desc:'All your soldiers in the field deal 30% more damage and march 20% faster for 15 s',cost:110,cd:90,kind:'global',dur:15},
- {id:1,name:'Spies',desc:'Reveals a circle of the map for 20 s',cost:20,cd:25,kind:'point',r:200,dur:20},
- {id:2,name:'Hellfire',desc:'Fire falls on a spot after a short warning, burning every enemy there',cost:70,cd:55,kind:'point',r:45,delay:1.6}];
-const MAGIC_KEY=['horde','spy','hfire'];
-const CARDS=((pc,mc,on)=>[['grow','Fecund Pits','+15% breeding','soul',3,n=>1+.15*n,pc(15)],
- ['tithe','Blood Tithe','+15% souls from kills and Souls mode','soul',3,n=>1+.15*n,pc(15)],
- ['well','Deep Wells','+40% souls from Soul Wells and Springs','soul',3,n=>1+.4*n,pc(40)],
- ['thrift','Pact of Thrift','Levels, paths and towers cost 15% less','soul',3,n=>1-.15*n,mc(15)],
- ['acap','Legion Writ','+25% army cap and castle capacity','war',3,n=>1+.25*n,pc(25)],
- ['dmg','Razor Claws','+15% damage','war',3,n=>1+.15*n,pc(15)],
- ['hp','Thick Hides','+15% health','war',3,n=>1+.15*n,pc(15)],
- ['march','Forced March','+20% march speed and +25% muster limit','war',2,n=>1+.2*n,pc(20)],
- ['def','Brimstone Walls','+20% castle defence','war',3,n=>1+.2*n,pc(20)],
- ['siege','Siegebreakers','Full damage against walls','war',1,n=>n,on('Full')],
- ['blood','Blood Oath','Units leave castles with +15% health and damage','war',1,n=>n,on('+15%')],
- ['tower','Tower Mastery','Castle towers +40% fire and range','war',3,n=>1+.4*n,pc(40)],
- ['laura','Tyrant’s Aura','Lord aura +30%','lord',3,n=>1+.3*n,pc(30)],
- ['lhp','Unbroken Will','Lords +30% health','lord',3,n=>1+.3*n,pc(30)],
- ['lcost','Infernal Contract','Lords cost 25% less','lord',2,n=>1-.25*n,mc(25)],
- ['horde','Horde Mastery','Horde Boost +40% strength and duration, costs 20% less','magic',3,n=>n,pc(40)],
- ['spy','Spymaster','Spies +30% radius and duration, cost 15% less','magic',3,n=>n,pc(30)],
- ['hfire','Hellfire Mastery','Hellfire +40% damage and radius, costs 20% less','magic',3,n=>n,pc(40)]
+ {id:1,name:'Spies',desc:'Reveals a circle of the map for 20 s',cost:20,cd:25,kind:'point',r:200,dur:20}];
+const MAGIC_KEY=['horde','spy'];
+// card power: a pick's strength depends on how many cards you have drawn so far (weak early, strong late); cards[id] sums the powers, capped at max
+const TIER_MUL=[.5,1,1.8],tierOf=rn=>rn<3?0:rn<7?1:2;
+const CARDS=((pc,mc,on)=>[['grow','Fecund Pits','Troops breed faster','soul',3,n=>1+.15*n,pc(15)],
+ ['tithe','Blood Tithe','More souls from kills and Souls mode','soul',3,n=>1+.15*n,pc(15)],
+ ['well','Deep Wells','More souls from Soul Wells and Springs','soul',3,n=>1+.4*n,pc(40)],
+ ['thrift','Pact of Thrift','Levels, paths and towers cost less','soul',3,n=>1-.15*n,mc(15)],
+ ['acap','Legion Writ','Bigger army cap and castle capacity','war',3,n=>1+.25*n,pc(25)],
+ ['dmg','Razor Claws','Soldiers deal more damage','war',3,n=>1+.15*n,pc(15)],
+ ['hp','Thick Hides','Soldiers have more health','war',3,n=>1+.15*n,pc(15)],
+ ['march','Forced March','Faster marching and a bigger muster limit','war',3,n=>1+.2*n,pc(20)],
+ ['def','Brimstone Walls','Castles defend better','war',3,n=>1+.2*n,pc(20)],
+ ['siege','Siegebreakers','Full damage against walls (a late card)','war',1,n=>n,on('Full')],
+ ['blood','Blood Oath','Units leave castles with +15% health and damage (a late card)','war',1,n=>n,on('+15%')],
+ ['tower','Tower Mastery','Castle towers fire faster and farther','war',3,n=>1+.4*n,pc(40)],
+ ['laura','Tyrant’s Aura','Your lords’ aura grows stronger','lord',3,n=>1+.3*n,pc(30)],
+ ['lhp','Unbroken Will','Lords have more health','lord',3,n=>1+.3*n,pc(30)],
+ ['lcost','Infernal Contract','Lords cost less','lord',2,n=>1-.25*n,mc(25)],
+ ['horde','Horde Mastery','Horde Boost is stronger, lasts longer and costs less','magic',3,n=>n,pc(40)],
+ ['spy','Spymaster','Spies see wider and longer, and cost less','magic',3,n=>n,pc(30)]
 ].map(([key,name,desc,tag,max,m,eff],id)=>({id,key,name,desc,tag,max,w:tag==='lord'?1.5:tag==='magic'?2:3,m,eff})))(k=>n=>'+'+Math.round(k*n)+'%',k=>n=>'−'+Math.round(k*n)+'%',t=>n=>n?t:'—');
 const CARD_ID={},MOD0={};CARDS.forEach(c=>{CARD_ID[c.key]=c.id;MOD0[c.key]=c.m(0);});
-function recomputeMods(G,s){const p=G.pl[s];if(!p)return;const m={};for(const c of CARDS)m[c.key]=c.m(Math.min(c.max,(p.cards&&p.cards[c.id])|0));p.mod=m;}
+function recomputeMods(G,s){const p=G.pl[s];if(!p)return;const m={};for(const c of CARDS)m[c.key]=c.m(Math.min(c.max,(p.cards&&p.cards[c.id])||0));p.mod=m;}
 function mod(G,s,k){const p=G&&s>=0&&s<8?G.pl[s]:null;return p&&p.mod?p.mod[k]:MOD0[k];}
-function cardCount(G,s,id){const p=G&&G.pl[s];return p&&p.cards?p.cards[id]|0:0;}
-function cardEffect(id,n){const c=CARDS[id];return c?c.eff(n|0):'';}
+function cardCount(G,s,id){const p=G&&G.pl[s];return p&&p.cards?p.cards[id]||0:0;}
+function cardEffect(id,n){const c=CARDS[id];return c?c.eff(n):'';}
 const musterMul=(G,s)=>1+(mod(G,s,'march')-1)*1.25;
 const LORD_NAMES=['Malvek','Azgor','Belthar','Vexis','Morgrath','Zerath','Ulkor','Draven','Sythra','Kragmor','Nhazul','Orbas','Raszul','Thessk','Vorgath','Xerith','Gorrul','Ishtak','Baalor','Mephor'];
 const NEUT_IDLE=6;
@@ -68,8 +69,8 @@ const MAPTHEME=['ash','ash','ash','ash','ash','ash','frost','sulfur'];
 const PERS=['Balanced','Aggressive','Turtle','Harvester'];
 function mkRng(seed){let s=seed>>>0;return()=>{s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
 const isWalled=c=>!!c.nw||c.path===2;
-const capOf=c=>Math.round(LV[c.lv].cap*(c.owner!==NEUTRAL&&GG?mod(GG,c.owner,'acap'):1)*(c.path===2?1.25:1));
-const maxLv=c=>c.kind==='m'?3:c.capital>=0?6:5;
+const capOf=c=>Math.round(LV[c.lv].cap*(c.capital>=0?1.4:1)*(c.owner!==NEUTRAL&&GG?mod(GG,c.owner,'acap'):1)*(c.path===2?1.25:1));
+const maxLv=c=>3;
 const castleVision=c=>c.path===2?460:c.capital>=0?300:210+Math.min(c.lv,3)*15;
 const FOOT=[0,70,98,128];
 function footW(c){const s=c.kind==='m'?62:c.kind==='v'&&c.owner===NEUTRAL?118:FOOT[Math.min(3,c.lv)]+14;return s*0.36;}
@@ -145,7 +146,7 @@ function newGame(cfg){
       starts.forEach((st,i)=>{const a=map.castles[st],b=map.castles[prev.c];const d=(a.x-b.x)**2+(a.y-b.y)**2;if(d<bd){bd=d;pick=i;}});}
     const c=starts.splice(pick,1)[0];assign[s]=c;prev={slot:s,c};}
   const C=map.castles;const taken=new Set(Object.values(assign));
-  for(const s of act){const c=C[assign[s]];c.owner=s;c.size=20;c.lv=2;c.capital=s;c.hill=false;c.u=[20,0,0];}
+  for(const s of act){const c=C[assign[s]];c.owner=s;c.size=20;c.lv=1;c.capital=s;c.hill=false;c.u=[20,0,0];}
   const rest=C.map((c,i)=>i).filter(i=>!taken.has(i));
   for(let i=rest.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[rest[i],rest[j]]=[rest[j],rest[i]];}
   // difficulty by distance: each Throne's nearest neutrals are easy hovels, the far core is walled
@@ -174,11 +175,11 @@ function newGame(cfg){
     if(wall.has(i)){const deep=(dist(i)-minD2)/Math.max(1,maxD-minD2);c.lv=3;c.kind='f';c.nw=1;c.tl=2;c.size=c.base=Math.floor(50+R()*12+deep*18);continue;}
     if(R()<0.25){c.lv=3;c.kind='f';c.tl=2;c.size=c.base=Math.floor(40+R()*15);}else{c.lv=1;c.kind='v';c.size=c.base=Math.floor(22+R()*11);}}
   for(const i of rest){const c=C[i];if(O.neut!==1){c.size=c.base=Math.max(4,Math.round(c.size*O.neut));}const sp=c.kind==='f'?Math.floor(c.size*(c.nw?0.35:0.25)):0;c.u=[c.size-sp,sp,0];}
-  const pl=[];for(let i=0;i<8;i++)pl.push({souls:O.souls,earned:0,inc:0,ig:0,cards:new Array(CARDS.length).fill(0),offer:null,rn:0,mod:null,cd:[0,0,0],mix:15,pour:null,pourA:0,pourH:0,hz:0,hzf:0,kw:-99,kv:0,sn:0,sx:0,sy:0,
+  const pl=[];for(let i=0;i<8;i++)pl.push({souls:O.souls,earned:0,inc:0,ig:0,cards:new Array(CARDS.length).fill(0),offer:null,rn:0,mod:null,otier:0,cd:[0,0],mix:15,pour:null,pourA:0,pourH:0,hz:0,hzf:0,kw:-99,kv:0,sn:0,sx:0,sy:0,
     ws:0,wb:-1,wh:0,lh:0,out:!act.includes(i),taken:0,peak:20,kills:0});
   const capIdx={};for(const s of act)capIdx[s]=assign[s];
   const G={...map,home:assign,capIdx,slots:cfg.slots,sp:cfg.sp||1,sol:[],sid:1,time:0,gt:0,over:false,winner:null,winBy:'',botT:{},events:[],pl,
-    scouts:[],fires:[],gid:1,lid:1,secT:0,tot:new Array(8).fill(0),fieldN:new Array(8).fill(0),nAct:act.length,rng:mkRng(cfg.seed^0x5bd1e995),weather:['clear','clear','embers','ash','wind'][Math.floor(R()*5)]};
+    scouts:[],gid:1,lid:1,secT:0,tot:new Array(8).fill(0),fieldN:new Array(8).fill(0),nAct:act.length,rng:mkRng(cfg.seed^0x5bd1e995),weather:['clear','clear','embers','ash','wind'][Math.floor(R()*5)]};
   G.opts=O;G.theme=MAPTHEME[mt];if(G.theme==='frost')G.weather='snow';else if(G.theme==='sulfur')G.weather=G.weather==='wind'?'wind':'clear';
   G.cfg={opts:O,seed:cfg.seed,W:cfg.W,H:cfg.H,ms:cfg.ms,sp:cfg.sp||1,mt:cfg.mt,botDelay:cfg.botDelay||0,slots:cfg.slots.map(s=>{const o={k:s.k,n:s.n||'',t:s.t|0,d:s.d|0,pe:s.pe|0};if(s.noRes)o.noRes=1;if(s.noArmy)o.noArmy=1;if(s.wonderFirst)o.wonderFirst=1;return o;})};
   act.forEach(s=>{G.botT[s]=(cfg.botDelay||1)+G.rng()*1.5;});
@@ -190,7 +191,7 @@ function newGame(cfg){
 function teamOf(G,o){if(o===NEUTRAL||o==null)return 'N';const s=G.slots[o];return s&&s.t?'T'+s.t:'S'+o;}
 function ev(G,e){if(G.events.length<200)G.events.push(e);}
 function gainSouls(p,v){p.souls+=v;p.earned+=v;p.ig=(p.ig||0)+v;}
-function armyCap(G,s){const ci=G.capIdx[s];const lv=ci!==undefined?G.castles[ci].lv:1;return Math.round((120+80*lv)*mod(G,s,'acap'));}
+function armyCap(G,s){const ci=G.capIdx[s];const lv=ci!==undefined?G.castles[ci].lv:1;return Math.round((150+120*lv)*mod(G,s,'acap'));}
 // garrison weight per type: toughness (hp ratio) and fire
 const GAR_W=[1,1.93,2.93],GAR_F=[1,1.25,1.4];
 function garrisonTough(G,c){if(c.owner===NEUTRAL||!(c.size>0))return 1;let w=0;for(let t=0;t<NU;t++)w+=Math.max(0,c.u[t])*GAR_W[t];return Math.sqrt(w/c.size*mod(G,c.owner,'hp'));}
@@ -208,9 +209,9 @@ function pathCost(G,s){return Math.round(PATH_COST*thrift(G,s));}
 function towerCost(G,s,c){return c&&(c.tl|0)<3?Math.round(TOWER_COST[c.tl|0]*thrift(G,s)*(c.path===2?0.7:1)):Infinity;}
 function researchCost(G,s){return Math.round(40*Math.pow(1.12,G.pl[s].rn));}
 function lordPrice(G,s){return Math.round((140+70*G.pl[s].lh)*mod(G,s,'lcost'));}
-function spellCost(G,s,id){return Math.round(SPELLS[id].cost*(1-[.2,.15,.2][id]*mod(G,s,MAGIC_KEY[id])));}
+function spellCost(G,s,id){return Math.round(SPELLS[id].cost*(1-[.2,.15][id]*mod(G,s,MAGIC_KEY[id])));}
 function spellCd(G,s,id){return SPELLS[id].cd;}
-function spellR(G,s,id){const n=mod(G,s,MAGIC_KEY[id]);return(SPELLS[id].r||0)*(id===1?1+.3*n:id===2?1+.4*n:1);}
+function spellR(G,s,id){const n=mod(G,s,MAGIC_KEY[id]);return(SPELLS[id].r||0)*(id===1?1+.3*n:1);}
 function spellDurOf(G,s,id){const n=mod(G,s,MAGIC_KEY[id]);return(SPELLS[id].dur||0)*(id===1?1+.3*n:id===0?1+.4*n:1);}
 function fieldCap(G,s){return Math.max(110,Math.floor(MAX_SOL*1.6/Math.max(1,G.nAlive||G.nAct)));}
 function solSpeed(G,s){let v=SPEED_S*UNIT[s.u].spd*mod(G,s.o,'march');const p=G.pl[s.o];if(p&&p.hz>G.gt)v*=1+HORDE_SPD*p.hzf;if(s.au)v*=1+0.08*s.au;return v;}
@@ -226,11 +227,11 @@ function kill(G,killer,t,x,y){ev(G,{t:'die',x,y,o:t.o,u:t.u});const pk=killer>=0
   killPay(G,killer,v*mod(G,killer,'tithe'),x,y);killPay(G,t.o,v*KILL_BACK*mod(G,t.o,'tithe'),x,y);}
 function flushSouls(G){for(let s=0;s<8;s++){const p=G.pl[s];if(p.sn>=0.5){ev(G,{t:'soul',x:p.sx,y:p.sy,s,n:Math.round(p.sn),why:0});p.sn=0;}}}
 function passiveRate(G,c){if(c.owner===NEUTRAL||!c.sup)return 0;const g=c.kind==='m'?1.2*(1+0.6*(c.lv-1)):c.path===1?0.3+0.1*c.lv:0;return g*mod(G,c.owner,'well');}
-function modeRate(G,c){if(c.owner===NEUTRAL||c.kind==='m'||!c.mode)return 0;return LV[c.lv].g*SOUL_YIELD*(c.path===1?1.5:1)*mod(G,c.owner,'tithe')*(c.sup?1:0.5);}
+function modeRate(G,c){if(c.owner===NEUTRAL||c.kind==='m'||!c.mode)return 0;return lvg(c)*SOUL_YIELD*(c.path===1?1.5:1)*mod(G,c.owner,'tithe')*(c.sup?1:0.5);}
 function soulRate(G,c){return passiveRate(G,c)+modeRate(G,c);}
-function growRate(G,c){return c.kind==='m'||c.mode?0:LV[c.lv].g*(c.path===1?0.7:c.path===3?1.4:1)*mod(G,c.owner,'grow')*(c.sup?1:0.5);}
+function growRate(G,c){return c.kind==='m'||c.mode?0:lvg(c)*(c.path===1?0.7:c.path===3?1.4:1)*mod(G,c.owner,'grow')*(c.sup?1:0.5);}
 // breeding: a Spawner spends its growth in fixed shares on the unit types it can make
-function breed(G,c,g){const m=c.path===3&&c.lv>=3?SPAWN_MIX[Math.min(6,c.lv)]:null;if(!m){addT(c,0,g);return;}
+function breed(G,c,g){const m=c.path===3&&c.lv>=3?(c.capital>=0?SPAWN_MIX.T:SPAWN_MIX[3]):null;if(!m){addT(c,0,g);return;}
   for(let t=0;t<NU;t++)if(m[t]>0)addT(c,t,g*m[t]/UNIT[t].gcost);}
 // place a soldier on its road
 function roadPt(G,s){const e=G.edges[s.e],f=G.castles[s.from];const sg=e.a===s.from?1:-1;const ux=e.ux*sg,uy=e.uy*sg;return{x:f.x+ux*s.d-uy*s.off,y:f.y+uy*s.d+ux*s.off,ux,uy};}
@@ -277,24 +278,23 @@ function fortify(G,slot,ci){if(!own(G,slot,ci))return false;const c=G.castles[ci
   p.souls-=cost;c.build={k:1,t:0,dur:TOWER_T};ev(G,{t:'up',c:ci});return true;}
 // ---------- research cards ----------
 function hasLordSource(G,s){return G.castles.some(k=>k.owner===s&&(k.path===2||k.lords.length>0||(k.build&&k.build.k===22)))||G.sol.some(x=>x.o===s&&x.lord);}
-function cardOk(G,s,id){const p=G.pl[s],c=CARDS[id];if((p.cards[id]|0)>=c.max)return false;if(c.tag==='lord')return hasLordSource(G,s);return true;}
+function cardOk(G,s,id){const p=G.pl[s],c=CARDS[id];if((p.cards[id]||0)>=c.max-0.01)return false;if(c.max===1&&p.rn<4)return false;if(c.tag==='lord')return hasLordSource(G,s);return true;}
 function wpick(G,ids){let t=0;for(const id of ids)t+=CARDS[id].w;let r=G.rng()*t;for(const id of ids){r-=CARDS[id].w;if(r<=0)return id;}return ids[ids.length-1];}
 function drawResearch(G,s){const p=G.pl[s];if(!p||p.out||G.over||p.offer)return false;const cost=researchCost(G,s);if(p.souls<cost)return false;
   const pool=CARDS.filter(c=>cardOk(G,s,c.id)).map(c=>c.id);if(!pool.length)return false;const off=[];
   while(off.length<2){const r=pool.filter(id=>!off.includes(id));if(!r.length)break;off.push(wpick(G,r));}
-  p.souls-=cost;p.offer=off;ev(G,{t:'offer',s});return true;}
+  p.souls-=cost;p.offer=off;p.otier=tierOf(p.rn);ev(G,{t:'offer',s});return true;}
 function pickCard(G,s,i){const p=G.pl[s];if(!p||p.out||G.over||!p.offer||!(i>=0&&i<p.offer.length))return false;const id=p.offer[i],c=CARDS[id];
-  p.offer=null;p.cards[id]=(p.cards[id]|0)+1;p.rn++;recomputeMods(G,s);
+  p.offer=null;p.cards[id]=Math.min(c.max,(p.cards[id]||0)+(c.max===1?1:TIER_MUL[p.otier|0]));p.rn++;recomputeMods(G,s);
   if(c.key==='lhp'){const nm=lordMaxBase(G,s),fix=L=>{const k=nm/L.max;L.max=nm;L.hp*=k;return k;};
     for(const k of G.castles)for(const L of k.lords)if(L.o===s)fix(L);for(const x of G.sol)if(x.lord&&x.lord.o===s)x.hp*=fix(x.lord);}
   ev(G,{t:'card',s,id});return true;}
-// ---------- spells: 0 Horde Boost (global), 1 Spies (point), 2 Hellfire (point) ----------
-function useSpell(G,s,k,x,y){const p=G.pl[s];if(!p||p.out||G.over||!(k>=0&&k<3)||p.cd[k]>G.gt)return false;const cost=spellCost(G,s,k);if(p.souls<cost)return false;
+// ---------- spells: 0 Horde Boost (global), 1 Spies (point) ----------
+function useSpell(G,s,k,x,y){const p=G.pl[s];if(!p||p.out||G.over||!(k>=0&&k<2)||p.cd[k]>G.gt)return false;const cost=spellCost(G,s,k);if(p.souls<cost)return false;
   const pt=x>=0&&y>=0&&x<=G.W&&y<=G.H;
   if(k===0){if(p.hz>G.gt)return false;p.hz=G.gt+spellDurOf(G,s,0);p.hzf=1+.4*mod(G,s,'horde');ev(G,{t:'horde',s});}
-  else if(k===1){if(!pt)return false;G.scouts.push({x,y,s,until:G.gt+spellDurOf(G,s,1),r:spellR(G,s,1)});ev(G,{t:'spy',x,y,s});}
-  else{if(!pt)return false;G.fires.push({x,y,s,at:G.gt+SPELLS[2].delay,done:false,r:spellR(G,s,2),dmg:1+.4*mod(G,s,'hfire')});}
-  p.souls-=cost;p.cd[k]=G.gt+spellCd(G,s,k);ev(G,{t:'spell',s,id:k,slot:k});return true;}
+  else{if(!pt)return false;G.scouts.push({x,y,s,until:G.gt+spellDurOf(G,s,1),r:spellR(G,s,1)});ev(G,{t:'spy',x,y,s});}
+    p.souls-=cost;p.cd[k]=G.gt+spellCd(G,s,k);ev(G,{t:'spell',s,id:k,slot:k});return true;}
 // ---------- lords ----------
 function lordMaxBase(G,s){return UNIT[3].hp*mod(G,s,'lhp');}
 function lordMax(L){return L.max*(1+0.2*(L.rk|0));}
@@ -351,10 +351,6 @@ function step(G,rdt){
         let lr=null;if(!hasL&&!p.pour.lt&&(p.mix&8)&&nt+added>=6&&c.lords.length){lr=c.lords.shift();p.pour.lt=1;added++;}
         if(added)placeBlock(G,s,p.pour.from,p.pour.to,cur,footW(c)+5,1,3,p.pour.g,lr);}}}}
   G.scouts=G.scouts.filter(o=>o.until>G.gt);
-  for(const f of G.fires){if(f.done||G.gt<f.at)continue;f.done=true;const T=teamOf(G,f.s),R2=f.r*f.r;
-    for(const x of G.sol){if(x.hp<=0||teamOf(G,x.o)===T)continue;if((x.x-f.x)**2+(x.y-f.y)**2<R2){x.hp-=f.dmg*(0.85+G.rng()*0.3);if(x.hp<=0)kill(G,f.s,x,x.x,x.y);}}
-    ev(G,{t:'fire',x:f.x,y:f.y});}
-  G.fires=G.fires.filter(f=>!f.done||G.gt<f.at+0.1);
   stepSoldiers(G,dt);
   for(const s in G.botT){const slot=+s;if(G.slots[slot].k!=='b'||G.pl[slot].out)continue;
     G.botT[s]-=dt;if(G.botT[s]<=0){botThink(G,slot);const iv=[3.0,1.9,1.1][G.slots[slot].d??1];G.botT[s]=iv*(0.7+G.rng()*0.6);}}
@@ -442,7 +438,7 @@ function capture(G,i,by){
   const oldLv=c.lv,wasWalled=isWalled(c);
   for(const L of c.lords)lordDie(G,L,c.x,c.y);c.lords=[];
   c.owner=by;c.route=-1;c.build=null;c.mode=0;c.capital=-1;c.size=0;c.u=[0,0,0];c.fire=0;c.path=0;c.vp=0;c.lordCd=0;c.tl=Math.max(0,(c.tl|0)-1);c.tf=0;
-  if(c.kind!=='m'){c.lv=Math.max(1,Math.min(c.lv,5)-1);if(c.kind==='v'||c.kind==='f')c.kind='c';c.nw=0;}
+  if(c.kind!=='m'){c.lv=Math.max(1,c.lv-1);if(c.kind==='v'||c.kind==='f')c.kind='c';c.nw=0;}
   // the victors march in
   const T=teamOf(G,by);for(const s of G.sol)if(s.hp>0&&s.st===2&&s.to===i&&teamOf(G,s.o)===T)enterCastle(G,s,c);
   // muster blocks of the old owner outside this castle are released
@@ -473,11 +469,11 @@ function botView(G,slot){
   const V=C.map((c,i)=>{const mine=c.owner!==NEUTRAL&&teamOf(G,c.owner)===T;if(mine||seen(c.x,c.y)){mem[i]={...c,u:[...c.u],lords:[...c.lords],seenAt:G.gt};return c;}
     if(mem[i])return mem[i];return{...c,owner:NEUTRAL,capital:-1,path:0,mode:0,tl:c.kind==='f'?2:0,lords:[],size:c.kind==='f'?65:c.kind==='m'?SPRING_GUARD:26,u:[c.kind==='f'?45:c.kind==='m'?SPRING_GUARD:26,c.kind==='f'?20:0,0],assault:0,build:null};});
   return{V,seen};}
-// card preferences per personality, indexed by card id: grow tithe well thrift acap dmg hp march def siege blood tower laura lhp lcost horde spy hfire
-const BOT_PREF=[[3,3,2,2,2,3,3,3,2,2,3,2,2,2,1,3,1,2],[2,2,1,1,2,4,4,4,2,3,4,2,3,3,2,3,1,3],
- [3,2,2,3,3,3,3,2,4,1,2,4,1,1,1,2,1,2],[4,4,4,3,3,2,2,2,2,1,2,2,1,1,1,1,1,1]];
+// card preferences per personality, indexed by card id: grow tithe well thrift acap dmg hp march def siege blood tower laura lhp lcost horde spy
+const BOT_PREF=[[3,3,2,2,2,3,3,3,2,2,3,2,2,2,1,3,1],[2,2,1,1,2,4,4,4,2,3,4,2,3,3,2,3,1],
+ [3,2,2,3,3,3,3,2,4,1,2,4,1,1,1,2,1],[4,4,4,3,3,2,2,2,2,1,2,2,1,1,1,1,1]];
 function botCard(G,slot,pe,x){const p=G.pl[slot];let bi=0,bv=-1;
-  p.offer.forEach((id,i)=>{const c=CARDS[id];let v=BOT_PREF[pe][id]*(0.75+0.5*G.rng())/(1+0.15*(p.cards[id]|0));
+  p.offer.forEach((id,i)=>{const c=CARDS[id];let v=BOT_PREF[pe][id]*(0.75+0.5*G.rng())/(1+0.3*(p.cards[id]||0));
     if(G.slots[slot].noArmy&&c.tag==='war')v*=0.05;
     if(c.key==='well')v*=x.wells?1+0.3*x.wells:0.3;else if(c.key==='tithe'||c.key==='grow')v*=x.souls?1.2:0.8;
     else if(c.key==='acap')v*=x.capped?1.5:0.8;else if(c.key==='siege')v*=x.walled?3:0.6;else if(c.key==='tower')v*=x.towers?1.4:0.5;
@@ -547,14 +543,11 @@ function botThink(G,slot){
       if(!spent&&capC.owner===slot&&capC.lv>=3&&p.wb<0&&p.ws<WONDER_STAGES&&p.souls>=WONDER_COST&&G.opts.wonder!==0){buildWonder(G,slot);spent=true;}
       if(!spent)for(const ci of mine){const c=C[ci];if(!c.build&&c.lv<maxLv(c)&&threat[ci]===0&&p.souls>=upCost(G,slot,c)){upgrade(G,slot,ci);break;}}}
   }
-  // spells: Horde Boost when many of our soldiers fight, Spies on fogged ground, Hellfire on enemy crowds
+  // spells: Horde Boost when many of our soldiers fight, Spies on fogged ground
   if(diff>=1){const res=diff===2?5:40;
     if(spReady(0)&&p.souls-spellCost(G,slot,0)>=res&&!(p.hz>G.gt)){let eng=0;for(const x of G.sol)if(x.o===slot&&(x.st===1||x.st===2))eng++;if(eng>=(diff===2?16:22))useSpell(G,slot,0);}
     if(spReady(1)&&p.souls-spellCost(G,slot,1)>=res&&((stuck&&R()<0.25)||R()<0.015)){let t=-1,bd=1e18;for(let i=0;i<n;i++){if(isMine(i)||BV.seen(C[i].x,C[i].y))continue;for(const ci of mine){const d=(C[i].x-C[ci].x)**2+(C[i].y-C[ci].y)**2;if(d<bd){bd=d;t=i;}}}
-      if(t>=0)useSpell(G,slot,1,C[t].x,C[t].y);}
-    if(spReady(2)&&p.souls-spellCost(G,slot,2)>=res){const r=spellR(G,slot,2),en=SOL.filter(x=>x.tm!==my&&x.hp>0);let best=null,bn=diff===2?8:12;
-      for(let j=0;j<en.length;j+=Math.max(1,Math.floor(en.length/40))){const a=en[j];let m=0;for(const b of en)if((b.x-a.x)**2+(b.y-a.y)**2<r*r*0.8)m++;if(m>bn){bn=m;best=a;}}
-      if(best)useSpell(G,slot,2,best.x,best.y);}}
+      if(t>=0)useSpell(G,slot,1,C[t].x,C[t].y);}}
   // defend: send help to castles under assault
   for(const ci of mine){const c=C[ci];if(threat[ci]>0&&(c.assault>0||threat[ci]>c.size*0.8)){
     let need2=Math.max(0,Math.min(capOf(c)-c.size,threat[ci]*1.3-c.size)+5);for(const {to} of G.adj[ci]){if(need2<=0)break;const o=C[to];if(o.owner===slot&&o.size>10&&o.assault===0&&(o.capital<0||o.size>30)){const n=Math.min(Math.floor(o.size*0.6),Math.ceil(need2));need2-=n;dispatch(G,slot,to,ci,n);}}}}
@@ -627,12 +620,11 @@ function encode(G,budget){GG=G;const c=[],ld=[],ct=[],li=L=>Math.max(0,LORD_NAME
     const l=k.lordCd>G.gt?Math.ceil(k.lordCd-G.gt):0;if(l)ct.push(i,l);});
   for(const s of G.sol)if(s.lord&&s.hp>0)ld.push(0,s.lord.home,s.lord.o,li(s.lord),Math.round(s.hp*10),Math.round(s.lord.max*10),s.rk|0);
   const pl=[];G.slots.forEach((sl,s)=>{if(sl.k!=='h'&&sl.k!=='b')return;const p=G.pl[s],of=p.offer;
-    pl.push(s,Math.floor(p.souls),Math.round(p.earned),Math.round(p.inc*10),p.cards.map(v=>v.toString(36)).join('').replace(/0+$/,''),of?1+of[0]+26*(of[1]??25):0,p.rn,Math.max(0,Math.ceil(p.cd[2]-G.gt)),
+    pl.push(s,Math.floor(p.souls),Math.round(p.earned),Math.round(p.inc*10),p.cards.map(v=>Math.round(v*10).toString(36).padStart(2,'0')).join('').replace(/(00)+$/,''),of?1+of[0]+26*(of[1]??25)+676*(p.otier|0):0,p.rn,0,
       Math.max(0,Math.ceil(p.cd[0]-G.gt)),Math.max(0,Math.ceil(p.cd[1]-G.gt)),p.ws|((p.wb>=0?1+Math.min(98,Math.floor(p.wb/WONDER_T*99)):0)<<3)|(Math.min(255,Math.floor(p.wh))<<10),
       (p.out?1:0)|(p.taken<<1),p.kills|0,Math.max(0,Math.ceil(p.hz-G.gt))|(Math.round((p.hzf||0)*100)<<8),p.lh|0,Math.round(p.peak),Math.round(G.tot[s]));});
   const sc=[];for(const o of G.scouts)sc.push(Math.round(o.x),Math.round(o.y),o.s,Math.ceil(o.until-G.gt),Math.round(o.r||200));
-  const fr=[];for(const f of G.fires)fr.push(Math.round(f.x),Math.round(f.y),f.s,Math.max(0,Math.round((f.at-G.gt)*10)),Math.round(f.r));
-  const g={c,pl,ld,ct,sc,fr,wb:G.winBy||'',w:G.over?(G.winner||'-'):0,tm:Math.round(G.time),so:''};
+  const g={c,pl,ld,ct,sc,wb:G.winBy||'',w:G.over?(G.winner||'-'):0,tm:Math.round(G.time),so:''};
   const base=JSON.stringify(g).length;const room=Math.max(0,Math.floor(((budget||3400)-base)/6));g.so=encSol(G,Math.min(room,MAX_SOL));return g;}
 function decodeInto(G,g){GG=G;const C=G.castles;
   for(const c of C)c.lords=[];G.flords=[];
@@ -645,19 +637,18 @@ function decodeInto(G,g){GG=G;const C=G.castles;
     if(w>0&&C[w-1])C[w-1].lords.push(L);else G.flords.push(L);}
   G.csol=decSol(g.so||'');G.csolT=Date.now();
   if(Array.isArray(g.pl))for(let i=0;i+ENC_PLN-1<g.pl.length;i+=ENC_PLN){const a=g.pl,s=a[i],p=G.pl[s];if(!p)continue;
-    p.souls=a[i+1];p.earned=a[i+2];p.inc=a[i+3]/10;const cs=String(a[i+4]||'');p.cards=CARDS.map((c,j)=>j<cs.length?parseInt(cs[j],36)||0:0);
-    const of=a[i+5];p.offer=of?[(of-1)%26,Math.floor((of-1)/26)%26].filter(v=>v<25):null;
-    p.rn=a[i+6];p.cd=[G.gt+a[i+8],G.gt+a[i+9],G.gt+a[i+7]];
+    p.souls=a[i+1];p.earned=a[i+2];p.inc=a[i+3]/10;const cs=String(a[i+4]||'');p.cards=CARDS.map((c,j)=>2*j<cs.length?(parseInt(cs.substr(2*j,2),36)||0)/10:0);
+    const of=a[i+5];p.offer=of?[(of-1)%26,Math.floor(((of-1)%676)/26)].filter(v=>v<25):null;p.otier=of?Math.floor((of-1)/676):0;
+    p.rn=a[i+6];p.cd=[G.gt+a[i+8],G.gt+a[i+9]];
     {const W=a[i+10]|0;p.ws=W&7;const bp=(W>>3)&127;p.wb=bp?(bp-1)/99*WONDER_T:-1;p.wh=(W>>10)&255;}
     p.out=!!(a[i+11]&1);p.taken=a[i+11]>>1;p.kills=a[i+12]|0;{const H=a[i+13]|0;p.hz=G.gt+(H&255);p.hzf=(H>>8)/100;}p.lh=a[i+14]|0;p.peak=a[i+15]|0;G.tot[s]=a[i+16]|0;recomputeMods(G,s);}
   G.scouts=[];if(Array.isArray(g.sc))for(let i=0;i+4<g.sc.length;i+=5)G.scouts.push({x:g.sc[i],y:g.sc[i+1],s:g.sc[i+2],until:G.gt+g.sc[i+3],r:g.sc[i+4]});
-  G.fires=[];if(Array.isArray(g.fr))for(let i=0;i+4<g.fr.length;i+=5)G.fires.push({x:g.fr[i],y:g.fr[i+1],s:g.fr[i+2],at:G.gt+g.fr[i+3]/10,done:false,cl:1,r:g.fr[i+4]});
   G.time=g.tm||G.time;
   if(g.w&&!G.over){G.over=true;G.winner=g.w==='-'?null:g.w;G.winBy=g.wb||'';}
 }
-if(typeof module!=='undefined')module.exports={COLORS,NEUTRAL,LV,LVCOST,maxLv,UNIT,NU,SPAWN_MIX,PATHS,PATH_COST,PATH_T,LEVEL_T,CARDS,CARD_ID,SPELLS,LORD_NAMES,PERS,MAPTYPES,MAPTHEME,MAPGEN,
+if(typeof module!=='undefined')module.exports={COLORS,NEUTRAL,LV,LVCOST,maxLv,UNIT,NU,SPAWN_MIX,PATHS,PATH_COST,PATH_T,LEVEL_T,CARDS,CARD_ID,TIER_MUL,tierOf,SPELLS,LORD_NAMES,PERS,MAPTYPES,MAPTHEME,MAPGEN,
   WONDER_COST,WONDER_STAGES,WONDER_T,WONDER_HOLD,TOWER_COST,TOWER_T,TW_R,TW_FIRE,SOUL_YIELD,KILL_V,KILL_BACK,KILL_CAP,SPRING_GUARD,HORDE_DMG,HORDE_SPD,LORD_R,LORD_CD,MAX_SOL,SPEED_S,ROUTE_IV,ROUTE_PKT,FIRE,HIT_W,CD_W,DAY_LEN,
   genMap,newGame,step,encode,decodeInto,decSol,encSol,teamOf,aliveTeams,checkWin,capture,eliminate,supply,mkRng,segX,
-  squad,setRoute,upgrade,setMode,drawResearch,useSpell,setMix,fortify,choosePath,pickCard,buildWonder,hireLord,dispatch,setPour,
+  kill,squad,setRoute,upgrade,setMode,drawResearch,useSpell,setMix,fortify,choosePath,pickCard,buildWonder,hireLord,dispatch,setPour,
   capOf,load,armyCap,musterCap,growRate,soulRate,passiveRate,modeRate,killSouls,defMul,isWalled,unitOk,upCost,pathCost,towerCost,towerFire,towerRange,researchCost,
   cardCount,cardEffect,cardOk,recomputeMods,mod,spellCost,spellCd,spellR,spellDurOf,lordStatus,lordPrice,lordOf,lordMax,canLord,castleVision,nightLevel,fieldCap,needToTake,botThink,botView,garrisonFire};

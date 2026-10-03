@@ -71,9 +71,9 @@ $('#b-units').onclick=()=>{const U=t=>UNIT[t]||{},pt=t=>`<span class="upt"><canv
 <p><b>Souls mode</b> in a castle panel stops its breeding and turns it into souls. Kills pay a few souls too, and the loser gets a little back. Souls buy everything.</p>
 <p><b>Send chips</b> pick who marches when you hold or tap a road. Routes never take the lord.</p></div><button class="btn primary" data-a="ok">Got it</button>`,{ok:closeOv});hordeArt();};
 
-// ---------- spell bar: 0 Horde Boost (no target), 1 Spies, 2 Hellfire (tap the map) ----------
-const SPELL_HINT=['','Tap the map where your spies should look.','Tap where hellfire should fall. It lands after a short warning.'];
-const SPGLY=['sp3','sp2','sp0'];
+// ---------- spell bar: 0 Horde Boost (no target), 1 Spies (tap the map) ----------
+const SPELL_HINT=['','Tap the map where your spies should look.'];
+const SPGLY=['sp3','sp2'];
 document.querySelectorAll('.ab[data-ab]').forEach(b=>b.onclick=()=>{
   if(!G||G.over||mySlot<0||G.pl[mySlot].out)return;const k=+b.dataset.ab,p=G.pl[mySlot],S=SPELLS[k];if(!S)return;
   if(armedAb===k){armedAb=-1;updateBar();toast(S.name+' put away.',1200);return;}
@@ -96,35 +96,34 @@ function updateBar(){
   renderMix();
 }
 
-// ---------- research cards ----------
+// ---------- research cards: one tap pays, draws two and shows them ----------
 const TAGS={soul:['Souls','wisp'],war:['War','blade'],lord:['Lords','crown'],magic:['Sorcery','sp2']};
+const TIERN=['Minor','Solid','Major'];
 const FLAVOR={grow:'The pits never stop writhing.',tithe:'Every drop is counted twice.',well:'Dig deeper. Something answers.',thrift:'Hell keeps a ledger, too.',acap:'By writ, the legion swells.',
   dmg:'Whetted on bone.',hp:'Scar on scar on scar.',march:'Ride the hot wind.',def:'Mortar mixed with brimstone.',siege:'No wall stands forever.',blood:'Born to the slaughter.',tower:'The towers learn to hate.',
-  laura:'Kneel, and grow strong.',lhp:'A lord does not fall easily.',lcost:'Signed in someone else’s blood.',horde:'One howl, ten thousand throats.',spy:'Nothing hides from the Eye.',hfire:'Let the sky burn.'};
+  laura:'Kneel, and grow strong.',lhp:'A lord does not fall easily.',lcost:'Signed in someone else’s blood.',horde:'One howl, ten thousand throats.',spy:'Nothing hides from the Eye.'};
 let resOpen=false,resKey='',resBusy=0,resDealt='';
-$('#b-res').onclick=()=>{if(!G||mySlot<0||G.over)return;resOpen=true;resKey='';renderResearch();};
-function cardHtml(id,i){const C=CARDS[id]||{},n=cardCount(G,mySlot,id)|0,T=TAGS[C.tag]||TAGS.war;
-  const eff=n>0?cardEffect(id,n)+' → '+cardEffect(id,n+1):cardEffect(id,1);
+$('#b-res').onclick=()=>{if(!G||mySlot<0||G.over||G.pl[mySlot].out)return;const p=G.pl[mySlot];
+  if(Array.isArray(p.offer)&&p.offer.length){resOpen=true;resKey='';renderResearch();return;}
+  const cost=researchCost(G,mySlot);if(p.souls<cost){toast('Research needs '+cost+' souls. You hold '+Math.floor(p.souls)+'.',1800);return;}
+  resBusy=performance.now();issue(5,0);resOpen=true;resKey='';renderResearch();setTimeout(renderResearch,90);};
+function cardHtml(id,i,tier){const C=CARDS[id]||{},n=cardCount(G,mySlot,id),T=TAGS[C.tag]||TAGS.war,mul=C.max===1?1:TIER_MUL[tier]||1;
   return`<button class="rcard t-${escH(C.tag||'war')}" data-pick="${i}" style="--i:${i}"><span class="rtag">${gly(T[1])}${T[0]}</span><b class="rname">${escH(C.name)}</b>`+
-    `<span class="reff">${escH(eff)}</span><small class="rdesc">${escH(C.desc)}</small><span class="rlv">${C.max>1?'Level '+n+' → '+(n+1)+' of '+C.max:'Unique'}</span>${FLAVOR[C.key]?`<i class="rfl">${FLAVOR[C.key]}</i>`:''}</button>`;}
+    `<span class="reff">${escH(cardEffect(id,mul))}</span><small class="rdesc">${escH(C.desc)}</small><span class="rlv">${C.max>1?TIERN[tier]+' boon'+(n>0?' · you have '+escH(cardEffect(id,n)):''):'Unique'}</span>${FLAVOR[C.key]?`<i class="rfl">${FLAVOR[C.key]}</i>`:''}</button>`;}
 function renderResearch(){
   if(!resOpen||!G||mySlot<0)return;const p=G.pl[mySlot];if(!p||G.over||p.out){resOpen=false;return;}
-  const off=Array.isArray(p.offer)&&p.offer.length?p.offer:null,cost=researchCost(G,mySlot),can=p.souls>=cost,busy=!off&&performance.now()-resBusy<1500;
-  const key=(off?'o'+off.join('.'):'d'+can+cost+busy)+'|'+CARDS.map((C,id)=>cardCount(G,mySlot,id)|0).join('');
+  const off=Array.isArray(p.offer)&&p.offer.length?p.offer:null;
+  if(!off&&performance.now()-resBusy>2500){resOpen=false;closeOv();return;}
+  const key=off?'o'+off.join('.')+'t'+(p.otier|0):'wait';
   if(key!==resKey||$('#ov').hidden||!$('#ov-card .rsh')){resKey=key;let h;
-    if(off){const ok=off.join('.');h=`<div class="rsh"><h3>Choose a card</h3><p class="sub">Keep one. It takes hold at once.</p><div class="rdeck${ok!==resDealt?' deal':''}">${off.map(cardHtml).join('')}</div></div><button class="btn" data-a="close">Decide later</button>`;resDealt=ok;}
-    else{let own='';CARDS.forEach((C,id)=>{const n=cardCount(G,mySlot,id)|0;if(n&&C)own+=`<span class="rown t-${escH(C.tag)}"><b>${escH(C.name)}</b>${C.max>1?`<em>${n}/${C.max}</em>`:''}<small>${escH(cardEffect(id,n))}</small></span>`;});
-      let sl='';SPELLS.forEach(S=>{sl+=`<div class="rslot">${gly(SPGLY[S.id])}<div><b>${escH(S.name)}</b><small>${escH(S.desc)}</small><em>${spellCost(G,mySlot,S.id)} souls · ${Math.round(spellCd(G,mySlot,S.id))} s recharge</em></div></div>`;});
-      h=`<div class="rsh"><h3>Research</h3><p class="sub">Draw two cards, keep one. Every draw costs a little more.</p><button class="btn primary rdraw" data-draw${can&&!busy?'':' disabled'}>${gly('cards')}<span>${busy?'Drawing…':'Draw two cards · '+cost+' souls'}</span></button><p class="rneed" data-need></p>`+
-        `<div class="sec"><span>Your cards</span><span class="sub">${p.rn|0} kept</span></div>${own?`<div class="rowns">${own}</div>`:'<p class="hint">No cards yet. Each draw shows two; you keep one.</p>'}<div class="sec"><span>Spells</span></div><div class="rsp">${sl}</div></div><button class="btn" data-a="close">Close</button>`;}
+    if(off){const ok=off.join('.');h=`<div class="rsh"><h3>Choose a card</h3><p class="sub">Keep one. It takes hold at once. Cards drawn later are stronger.</p><div class="rdeck${ok!==resDealt?' deal':''}">${off.map((id,i)=>cardHtml(id,i,p.otier|0)).join('')}</div></div><button class="btn" data-a="close">Decide later</button>`;resDealt=ok;}
+    else h=`<div class="rsh"><h3>Research</h3><p class="sub">Drawing cards…</p></div><button class="btn" data-a="close">Close</button>`;
     overlay(h,{close:()=>{resOpen=false;closeOv();}});
-    document.querySelectorAll('#ov-card [data-pick]').forEach(b=>b.onclick=()=>pickOffered(+b.dataset.pick));
-    const db=$('#ov-card [data-draw]');if(db)db.onclick=()=>{resBusy=performance.now();issue(5,0);renderResearch();setTimeout(renderResearch,90);};}
-  const nd=$('#ov-card [data-need]');if(nd)putT(nd,can?'You hold '+Math.floor(p.souls)+' souls.':'You hold '+Math.floor(p.souls)+' of '+cost+' souls. Switch castles to Souls mode, win fights and hold springs for more.');
+    document.querySelectorAll('#ov-card [data-pick]').forEach(b=>b.onclick=()=>pickOffered(+b.dataset.pick));}
 }
-function pickOffered(i){const p=G.pl[mySlot],off=p.offer;if(!off||off[i]==null)return;const id=off[i],C=CARDS[id]||{},n=cardCount(G,mySlot,id)|0;
+function pickOffered(i){const p=G.pl[mySlot],off=p.offer;if(!off||off[i]==null)return;const id=off[i],C=CARDS[id]||{},mul=C.max===1?1:TIER_MUL[p.otier|0]||1;
   issue(13,i);resOpen=false;resDealt='';closeOv();
-  toast((C.name||'Card')+(C.max>1?' '+(n+1)+'/'+C.max:'')+': '+cardEffect(id,n+1)+'.',2600);}
+  toast((C.name||'Card')+': '+cardEffect(id,mul)+'.',2600);}
 setInterval(()=>{if(resOpen&&!$('#ov').hidden&&$('#ov-card .rsh'))renderResearch();else resOpen=false;},700);
 
 // ---------- castle panel ----------

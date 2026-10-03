@@ -30,10 +30,10 @@ changing rules, the engine API or the UI structure.
 - Castles breed minions free up to a level cap and a global army cap, both counted in **supply** (minion 1, lesser 2, greater 5, lord 8). Souls are the only currency.
 - Souls come from: a per-castle **Army / Souls** toggle (Souls mode stops breeding and mines souls), **kills** (small, victim gets 50% back, capped per 10 s),
   **soul springs** (fairly placed, guarded) and Soul Well castles, and capture loot. No altars, sacrifice, pilgrims, promotion or Summon.
-- Units: Minion (any castle), Lesser demon (**Spawner** castle level 3+), Greater demon (Spawner level 5+ only), Lord (hired one per **Citadel**, aura).
-- Castles: levels 1-5 (Throne 6); a level-3 **path**: Soul Well / Citadel (walled, defence, lord) / Spawner (fast breeding, demons). **Castle towers** (`c.tl` 0-3,
+- Units: Minion (any castle), Lesser and Greater demon (**Spawner** castles only, greater are rare), Lord (hired one per **Citadel**, aura).
+- Castles: **three levels** (Throne too); a level-3 **path**: Soul Well / Citadel (walled, defence, lord) / Spawner (fast breeding, demons). **Castle towers** (`c.tl` 0-3,
   one purchase builds a ring that shoots nearby enemies) replace road spires.
-- Research: two cards per draw (price `40*1.12^n`), 18 cards, each worth roughly half to one unit tier. Three spells from the start: Horde Boost (global), Spies, Hellfire.
+- Research: one tap draws two cards (price `40*1.12^n`), 17 cards; card power is tiered by draws taken (weak early, strong late). Two spells from the start: Horde Boost (global), Spies.
 - Combat: veterans, walls need siege (greater demons, lords, Siegebreakers card), muster limit 30+30/level.
 - Map: 8 types, easy hovels near Thrones and a walled-fortress core (towers level 2), fair guarded springs, day/night, fog.
 - Victory: take every rival Throne, or finish the Hellgate (5 stages) and hold the Throne 4 minutes (option can disable).
@@ -45,8 +45,8 @@ changing rules, the engine API or the UI structure.
 - Run long sims through `bash -lc` in the background: they take 1-3 minutes.
 
 ## Status and open work
-1. **Balance** (2026-10-03 pass, final defaults): 32 bot games with 4-6 players: 0 unfinished, median about 20 min, about a third end by Hellgate. Harvester vs Aggressive duels split
-   35-37 over 80 games, but about 10% of duels still stall at 30 min (mutual Hellgate turtling). Cards sit in a 59-69% win-rate band (`sim:research`, control 56%); lord, tower and spell cards
+1. **Balance** (2026-10-03 pass, final defaults): 32 bot games with 4-6 players: 0 unfinished, median about 19 min, about half end by Hellgate. Harvester vs Aggressive duels split
+   25-26 over 60 games (three-level revision), but about 10% of duels still stall at 30 min (mutual Hellgate turtling). Cards sit in a 59-69% win-rate band (`sim:research`, control 56%); lord, tower and spell cards
    read lower because bots rarely use those systems. Not replayed by hand: campaign missions and the tutorial (only started by the smoke test). Bots rarely hire lords or build Spawners.
 2. **Multiplayer relay** for builds outside Claude (see Architecture).
 3. **Sound** (portals and stores expect it; none so far).

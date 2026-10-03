@@ -11,17 +11,18 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   const G=mk();const c=own(G,0);
   ok(H.UNIT.map(u=>u.sup).join()==='1,2,5,8','supply weights 1/2/5/8');
   c.u=[10,5,2];c.size=17;ok(H.load(c)===10+10+10,'load() is weighted');
-  ok(H.armyCap(G,0)===120+80*c.lv,'army cap 120+80*throne level');
+  ok(H.armyCap(G,0)===150+120*c.lv,'army cap 150+120*throne level');
   const cap0=H.armyCap(G,0);G.pl[0].cards[H.CARD_ID.acap]=2;H.recomputeMods(G,0);ok(H.armyCap(G,0)===Math.round(cap0*1.5),'Legion Writ scales the cap');
 }
-{ // breeding: plain castles make minions only; Spawners follow the level mix; greater only at level 5+
-  const G=mk();const c=own(G,0);prep(G);c.u=[0,0,0];c.size=0;c.lv=2;
+{ // breeding: plain castles make minions only; Spawners follow the mix; the Throne gets the richer one
+  const G=mk();const c=G.castles.find((k,i)=>i!==G.capIdx[0]&&i!==G.capIdx[1]&&k.kind!=='m'),T=own(G,0);prep(G);c.owner=0;c.u=[0,0,0];c.size=0;c.lv=2;c.path=0;
+  ok(H.maxLv(c)===3&&H.LV.length===4,'three castle levels');
   ok(!H.unitOk(c,1)&&!H.unitOk(c,2),'no demons without a Spawner');
-  c.lv=3;c.path=3;ok(H.unitOk(c,1)&&!H.unitOk(c,2),'Spawner lv3 makes lessers, not greaters');
-  c.lv=5;ok(H.unitOk(c,2),'Spawner lv5 makes greaters');
-  for(const lv of [3,4,5,6]){c.lv=lv;c.u=[0,0,0];c.size=0;c.path=3;c.mode=0;G.pl[0].mod.acap=9;run(G,40);
-    const m=H.SPAWN_MIX[lv],sp=c.u[0]+2.2*c.u[1]+7*c.u[2];
-    ok(near(c.u[0]/sp,m[0],0.04)&&near(2.2*c.u[1]/sp,m[1],0.04)&&near(7*c.u[2]/sp,m[2],0.04),'Spawner lv'+lv+' mix '+m.join('/')+' got '+[c.u[0]/sp,2.2*c.u[1]/sp,7*c.u[2]/sp].map(v=>v.toFixed(2)).join('/'));}
+  c.lv=3;c.path=3;ok(H.unitOk(c,1)&&H.unitOk(c,2),'a level-3 Spawner makes lessers and greaters');
+  G.pl[0].mod.acap=9;
+  for(const [nm,k,m] of [['castle',c,H.SPAWN_MIX[3]],['Throne',T,H.SPAWN_MIX.T]]){k.lv=3;k.u=[0,0,0];k.size=0;k.path=3;k.mode=0;run(G,50);
+    const sp=k.u[0]+2.2*k.u[1]+7*k.u[2];
+    ok(near(k.u[0]/sp,m[0],0.04)&&near(2.2*k.u[1]/sp,m[1],0.04)&&near(7*k.u[2]/sp,m[2],0.04),'Spawner '+nm+' mix '+m.join('/')+' got '+[k.u[0]/sp,2.2*k.u[1]/sp,7*k.u[2]/sp].map(v=>v.toFixed(2)).join('/'));}
   const d=mk();const q=own(d,0);q.lv=3;q.path=0;q.u=[0,0,0];q.size=0;run(d,30);ok(q.u[1]===0&&q.u[2]===0&&q.u[0]>3,'plain level-3 castle breeds minions only');
 }
 { // Souls mode: no breeding, souls instead, garrison stays
@@ -32,14 +33,14 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   c.mode=0;const w=H.modeRate(G,c);ok(w===0,'Army castle has no mode income');
   c.mode=1;c.path=1;const a=H.modeRate(G,c);c.path=0;ok(near(a/H.modeRate(G,c),1.5,0.001),'Soul Well gives +50% in Souls mode');
 }
-{ // kills pay the killer, give the victim a consolation, and are capped per window (driven through Hellfire)
-  const G=mk();prep(G);const sol=(id,x,y)=>{const s={id,o:1,from:G.adj[G.capIdx[1]][0].to,to:G.capIdx[1],e:G.edgeKey[G.adj[G.capIdx[1]][0].to+'_'+G.capIdx[1]],d:30,off:0,st:3,u:0,g:0,rk:0,xp:0,hp:.1,cd:0,tgt:null,tt:9,ret:0,ch:false,x,y,px:x,py:y,hx:1,hy:0,wx:0,wy:0,lord:null,au:0};G.sol.push(s);G.fieldN[1]++;return s;};
-  G.pl[0].cd=[0,0,0];const fc=G.castles[G.adj[G.capIdx[1]][0].to],s1=sol(8001,fc.x,fc.y);run(G,0.5);const e0=G.pl[0].earned,e1=G.pl[1].earned;
-  H.useSpell(G,0,2,s1.x,s1.y);run(G,2.2);
-  ok(near(G.pl[0].earned-e0,H.killSouls(0),0.01),'killer gets '+H.killSouls(0).toFixed(2)+' souls, got '+(G.pl[0].earned-e0).toFixed(2));
-  ok(near(G.pl[1].earned-e1,H.killSouls(0)*H.KILL_BACK,0.01),'victim gets 50% back');
-  G.pl[0].cd=[0,0,0];G.pl[0].souls=500;const f0=G.pl[0].earned;for(let i=0;i<100;i++)sol(8100+i,fc.x,fc.y);run(G,0.5);const q=G.sol.find(x=>x.id===8100);
-  H.useSpell(G,0,2,q.x,q.y);run(G,2.2);ok(G.pl[0].earned-f0<=H.KILL_CAP+0.01&&G.pl[0].earned-f0>H.KILL_CAP*0.5,'kill souls are capped ('+(G.pl[0].earned-f0).toFixed(1)+' of '+H.KILL_CAP+')');
+{ // kills pay the killer, give the victim a consolation, and are capped per window
+  const G=mk();prep(G);G.gt=100;const e0=G.pl[0].earned,e1=G.pl[1].earned,v=H.killSouls(0);
+  H.kill(G,0,{o:1,u:0},10,10);
+  ok(near(G.pl[0].earned-e0,v,0.01),'killer gets '+v.toFixed(2)+' souls, got '+(G.pl[0].earned-e0).toFixed(2));
+  ok(near(G.pl[1].earned-e1,v*H.KILL_BACK,0.01),'victim gets 50% back');
+  const f0=G.pl[0].earned;for(let i=0;i<20;i++)H.kill(G,0,{o:1,u:3},10,10);
+  ok(G.pl[0].earned-f0<=H.KILL_CAP+0.01&&G.pl[0].earned-f0>H.KILL_CAP*0.5,'kill souls are capped ('+(G.pl[0].earned-f0).toFixed(1)+' of '+H.KILL_CAP+')');
+  G.gt+=11;const g0=G.pl[0].earned;H.kill(G,0,{o:1,u:0},10,10);ok(G.pl[0].earned>g0,'the cap window reopens');
   ok(near(H.killSouls(0),H.KILL_V,1e-9)&&near(H.killSouls(1),H.KILL_V*1.45/.75,1e-9)&&near(H.killSouls(3),H.KILL_V*14/.75,1e-9),'kill value scales with hp');
 }
 { // towers: build one level, fire at enemies near the castle, lose a level on capture
@@ -56,7 +57,7 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   const hp0=5;run(G,6);const s=G.sol.find(x=>x.id===9999);ok(!s||s.hp<hp0,'tower shoots an enemy within range');
 }
 { // paths and lords
-  const G=mk();prep(G);const c=own(G,0);c.lv=4;
+  const G=mk();prep(G);const c=own(G,0);c.lv=3;
   ok(H.choosePath(G,0,G.capIdx[0],2)===false,'the Throne cannot take Citadel');
   ok(H.choosePath(G,0,G.capIdx[0],3)===true,'the Throne can take Spawner');
   const q=G.castles.find((k,i)=>i!==G.capIdx[0]&&i!==G.capIdx[1]&&k.kind!=='m');q.owner=0;q.lv=3;q.u=[10,0,0];q.size=10;q.path=0;q.build=null;
@@ -64,21 +65,24 @@ const prep=G=>{for(const p of G.pl)p.souls=2000;};
   ok(H.lordStatus(G,0,G.castles.indexOf(q)).can,'a Citadel can hire a lord');ok(H.hireLord(G,0,G.castles.indexOf(q))&&q.lords.length===1,'lord hired');
   ok(H.lordStatus(G,0,G.capIdx[0]).can===false,'the Throne cannot hire a lord');
 }
-{ // research: two cards, price scale, spells ready from the start
+{ // research: two cards at once, price scale, tiers (weak early, strong late)
   const G=mk();prep(G);const p=G.pl[0];
   ok(H.researchCost(G,0)===40,'first card costs 40');ok(H.drawResearch(G,0)&&p.offer.length===2&&p.offer[0]!==p.offer[1],'two distinct cards offered');
+  ok(p.otier===0&&H.TIER_MUL.join()==='0.5,1,1.8','early draws are tier 0');
   ok(H.drawResearch(G,0)===false,'no second draw while an offer is pending');
-  ok(H.pickCard(G,0,1)&&p.offer===null&&p.rn===1,'pick clears the offer');ok(H.researchCost(G,0)===Math.round(40*1.12),'price rises by 12%');
-  ok(H.SPELLS.length===3&&H.CARDS.length===18,'3 spells and 18 cards');
-  ok(H.CARDS.every(c=>c.id>=0),'card ids');
-  const big=H.CARDS.filter(c=>/\+(\d+)%/.test(c.desc)).every(c=>+/\+(\d+)%/.exec(c.desc)[1]>=15);ok(big,'every percentage card is at least +15%');
+  const id=p.offer[1];ok(H.pickCard(G,0,1)&&p.offer===null&&p.rn===1,'pick clears the offer');ok(near(p.cards[id],H.CARDS[id].max===1?1:0.5,1e-9),'a tier-0 pick is worth half');
+  ok(H.researchCost(G,0)===Math.round(40*1.12),'price rises by 12%');
+  p.rn=8;H.drawResearch(G,0);ok(p.otier===2,'late draws are tier 2');const id2=p.offer[0],b0=p.cards[id2]||0;H.pickCard(G,0,0);ok(near(p.cards[id2]-b0,H.CARDS[id2].max===1?1:Math.min(1.8,H.CARDS[id2].max-b0),1e-9),'a tier-2 pick is worth 1.8');
+  ok(H.SPELLS.length===2&&H.CARDS.length===17,'2 spells and 17 cards');
+  ok(H.CARDS.filter(c=>c.max>1&&c.tag!=='lord'&&c.key!=='lcost').every(c=>{const m=/\+(\d+)%|−(\d+)%/.exec(c.eff(1));return m&&+(m[1]||m[2])>=15;}),'a normal (tier 1) pick is at least 15%');
+  const A=mk(2,{seed:5}),B=mk(2,{seed:5});A.pl[0].souls=999;A.pl[0].rn=8;H.drawResearch(A,0);const j=JSON.parse(JSON.stringify(H.encode(A)));H.decodeInto(B,j);ok(B.pl[0].otier===2&&B.pl[0].offer.join()===A.pl[0].offer.join(),'offer tier survives encode');
 }
 { // spells
   const G=mk();prep(G);const p=G.pl[0];
-  ok(H.spellCost(G,0,0)===110&&H.spellCost(G,0,1)===20&&H.spellCost(G,0,2)===70,'spell costs');
+  ok(H.spellCost(G,0,0)===110&&H.spellCost(G,0,1)===20,'spell costs');
   const s0=p.souls;ok(H.useSpell(G,0,0)&&p.souls===s0-110&&p.hz>G.gt,'Horde Boost is global and costs 110');ok(H.useSpell(G,0,0)===false,'cannot recast Horde Boost while it is on');
   ok(H.useSpell(G,0,1,500,800)&&G.scouts.length===1&&G.scouts[0].r===200,'Spies reveal radius 200');ok(H.useSpell(G,0,1,500,800)===false,'Spies on cooldown');
-  ok(H.useSpell(G,0,2,500,800)&&G.fires.length===1,'Hellfire queued');
+  ok(H.useSpell(G,0,2,500,800)===false,'there is no third spell');
   G.pl[0].cards[H.CARD_ID.horde]=2;H.recomputeMods(G,0);ok(H.spellCost(G,0,0)===Math.round(110*.6),'Horde Mastery cuts cost');
 }
 { // capture: loot, level and tower drop, Souls mode reset

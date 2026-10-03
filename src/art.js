@@ -275,8 +275,10 @@ function spriteSpring(col,lv,tl){const size=300;const [cn,x]=mkCanvas(size);cons
   if(col)flags.push({x:c+44,y:cy-14,s:1.2});
   return{cn,size,ox:c,oy:cy,flags,smoke,plaque:72,foot:62,footY:44};}
 const SPR=new Map(),SPRH=new Map();
+// castles have three levels; a Throne is drawn with the grand art (levels 4-6) so it stands out
+function artLv(c){const l=Math.max(1,Math.min(3,c.lv|0||1));return c.capital>=0&&c.kind!=='m'?l+3:l;}
 function spriteFor(c,col,hi){
-  const neutral=c.owner===NEUTRAL,kind=c.kind||'c',lv=Math.max(1,Math.min(6,c.lv|0||1)),path=c.path|0,cap=c.capital>=0?1:0,nw=c.nw?1:0,tl=neutral&&kind!=='m'?0:Math.min(3,c.tl|0);
+  const neutral=c.owner===NEUTRAL,kind=c.kind||'c',lv=artLv(c),path=c.path|0,cap=c.capital>=0?1:0,nw=c.nw?1:0,tl=neutral&&kind!=='m'?0:Math.min(3,c.tl|0);
   const key=kind+'|'+lv+'|'+path+'|'+cap+'|'+nw+'|'+tl+'|'+(neutral?'n':col);
   const M=hi?SPRH:SPR;let s=M.get(key);if(s){if(hi){M.delete(key);M.set(key,s);}return s;}
   if(hi){if(M.size>=16)M.delete(M.keys().next().value);}else if(M.size>70)M.clear();
@@ -284,7 +286,7 @@ function spriteFor(c,col,hi){
   if(kind==='m')s=spriteSpring(neutral?null:col,Math.min(3,lv),tl);else if(kind==='v'&&neutral)s=spriteHovel();else if(kind==='f'&&neutral)s=spriteFortress(nw);
   else s=spriteCastle(lv,col,cap,path,neutral,tl);
   M.set(key,s);return s;}
-function footOf(c){const s=c.kind==='m'?{foot:62,footY:44}:c.kind==='v'&&c.owner===NEUTRAL?{foot:118,footY:70}:{foot:RX[Math.min(3,c.lv)]+14+(c.lv>=4?36:0),footY:RY[Math.min(3,c.lv)]+10+(c.lv>=4?27:0)};return{rx:s.foot*ART,ry:s.footY*ART};}
+function footOf(c){const s=c.kind==='m'?{foot:62,footY:44}:c.kind==='v'&&c.owner===NEUTRAL?{foot:118,footY:70}:{foot:RX[Math.min(3,artLv(c))]+14+(artLv(c)>=4?36:0),footY:RY[Math.min(3,artLv(c))]+10+(artLv(c)>=4?27:0)};return{rx:s.foot*ART,ry:s.footY*ART};}
 // ---------- per-frame pieces (world units) ----------
 function drawFlag(x,fx,fy,s,col,t,limp){const ph=t*2.3+fx*.37+fy*.11,w=limp?0:Math.sin(ph),w2=limp?0:Math.sin(ph*1.6+1.1);const c=limp?memo(col+'L',()=>mixh(mixh(col,'#8a8478',.5),'#ffffff',.15)):col;
   x.lineCap='round';x.strokeStyle='#1d181e';x.lineWidth=1.6*s;x.beginPath();x.moveTo(fx,fy);x.lineTo(fx,fy-20.5*s);x.moveTo(fx-.6*s,fy-18*s);x.lineTo(fx+15.6*s,fy-18*s+w2*.3*s);x.stroke();
