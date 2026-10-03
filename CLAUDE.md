@@ -10,7 +10,7 @@ changing rules, the engine API or the UI structure.
 - After engine changes run `npm test`; after balance changes also `npm run sim:balance` and `npm run sim:length`.
 - `src/core.js` must stay loadable in Node (tests `require` it) and in the browser.
 - Keep the sync encoding (`encode`/`decodeInto`, soldier 6-char base64 packing) backward-consistent within a release; replays use it too.
-- `tools/shot.cjs` (headless screenshot), `tools/smoke.cjs` (flow smoke test) and `tools/p2p-test.cjs` (two pages play over WebRTC) need Playwright; set `PLAYWRIGHT_DIR` to a playwright package if it is not found.
+- `tools/shot.cjs` (headless screenshot), `tools/smoke.cjs` (flow smoke test) and `tools/online-test.cjs` (two pages play through the public relay, needs internet) need Playwright; set `PLAYWRIGHT_DIR` to a playwright package if it is not found.
   Look at the pictures when you change art or UI.
 - The repo lives in WSL. From a Windows shell run Node through `wsl.exe -d Ubuntu-24.04 -e bash -lc 'cd ~/coding/keepfall && …'`.
 
@@ -22,12 +22,12 @@ changing rules, the engine API or the UI structure.
 - **head.js**: screens, setup options, campaign (6 missions + tutorial), daily challenge, replays, online lobby, game over.
 - **panel.js** (+ `game.html`, `game.css`): commands, Send chips, spell bar (2 spells + Research), two-card overlay, castle panel (Army/Souls toggle, upgrade or specialise, lord, Hellgate).
 - **tail.js**: canvas renderer, effects, fog, HUD update, gestures, alerts, stats.
-- **net.js**: serverless multiplayer (`P2P`): WebRTC data channels in a star around the host, with invite/reply codes pasted by hand instead of a signalling server,
-  so it works on GitHub Pages. It has the same shape as the claude.ai room API (`presence(patch)`, `onPeers`, `peers`, `leave`); presence patches are merged and relayed by the host.
-- Online model: the **host's device runs the simulation**; clients send commands and render snapshots (~10/s). `head.js` uses the claude.ai room (`ROOM`) when it exists
-  (lobby list, 4-letter codes, spectators) and `P2P` otherwise (host makes one invite per friend, no spectators, up to 3 guests by default). Invite codes are about 650 characters;
-  outside services are public STUN servers (Google, Cloudflare) and, as a fallback for strict NATs, the free public TURN relay `openrelay.metered.ca` (DTLS-encrypted traffic, may be slow or disappear;
-  override with a JSON array of RTCIceServer objects in localStorage `bf-ice`). Both sides show the ICE state while connecting. Never tested across real NATs from the dev machine. A WebSocket relay with room codes would be a nicer join flow but needs a server.
+- **net.js**: online play through a free public MQTT-over-WebSocket broker (`MQROOM`: HiveMQ, falling back to EMQX; a tiny MQTT 3.1.1 client, no library, no account). It has the same shape as the
+  claude.ai room API the game was written against (`join(name)` -> `presence(patch)`, `onPeers`, `peers`, `leave`; plus a public game list through retained ads cleared by the MQTT last-will),
+  so `head.js` uses `ROOM` = the claude.ai room when it exists and `MQROOM` otherwise: 4-letter codes, public list, spectators. All traffic is relayed (no NAT problems, about 100 ms of extra latency),
+  but it is not private (topics are `brimfall-v1/...`, anyone guessing a code can join, broker operators can read). An earlier serverless WebRTC version with pasted codes did not connect for the
+  user on real networks and was removed. If the free brokers disappear, change `BROKERS` or host a Mosquitto/EMQX instance.
+- Online model: the **host's device runs the simulation**; clients send commands and render snapshots (~10/s, about 4 KB each through the relay).
 
 ## Mechanics (revision 4, 2026-10-03; DESIGN.md has the numbers and the revision notes)
 - Castles breed minions free up to a level cap and a global army cap, both counted in **supply** (minion 1, demon 2, lord 8). Souls are the only currency.
@@ -51,7 +51,7 @@ changing rules, the engine API or the UI structure.
 1. **Balance** (2026-10-03, revision 4 defaults): Harvester vs Aggressive duels about even (31-28 over 80), 32 bot games with 4-6 players: 1 unfinished, median about 26 min (longer than the 15-20
    target; the rush-and-snowball complaint made slower acceptable), about 60% end by Hellgate. About 25% of duels still stall at 30 min (mutual turtling). Run `sim:research` after any card change.
    Not replayed by hand: campaign missions and the tutorial (only started by the smoke test). Bots rarely hire lords or build Spawners.
-2. **Multiplayer**: P2P with pasted codes works but is clumsy; a relay with short room codes, spectators and a public game list would be better. Untested across real NATs (only loopback in `tools/p2p-test.cjs`).
+2. **Multiplayer**: works through the free public brokers (tested from the dev machine with two headless pages; not tested on phones or over mobile data). Free brokers can rate-limit or vanish: watch for it.
 3. **Sound** (portals and stores expect it; none so far).
 4. **Name check**: "Soulfall" was dropped because it is taken (Hell-themed ARPG on Steam by King's Crown Studio, 2025; a 2015 board game; an itch.io title).
    "Brimfall" had no game/app hits in web searches on 2026-10-02 (a web search, not a trademark search). Confirm on Google Play, the App Store and the USPTO/EUIPO registers before launch.

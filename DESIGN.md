@@ -26,7 +26,7 @@ towers), the five spell-learning cards, spell slots.
   2 afterwards, with `TIER_MUL = [.5, 1, 1.8]`. `p.cards[id]` is the summed power (capped at the card's `max`), `p.otier` the tier of the pending offer; unique cards (Siegebreakers, Blood Oath) only
   appear from the 5th draw and count as 1. Card descriptions no longer contain numbers; the headline `cardEffect(id, mult)` shows the value of this pick.
 * **Two spells only**: 0 Horde Boost, 1 Spies. Hellfire and its Mastery card are gone (17 cards, `p.cd` has 2 entries, no `G.fires`, no `fr` in the snapshot). `kill` is exported for tests.
-* **Online without a server** (`src/net.js`, `P2P`): host and friends connect with WebRTC data channels using invite and reply codes; same room-adapter shape as the claude.ai API, host relays presence. See CLAUDE.md.
+* **Online through a free public relay** (`src/net.js`, `MQROOM`): MQTT over WebSocket (HiveMQ, then EMQX), same room-adapter shape as the claude.ai API, 4-letter codes and a public list. See CLAUDE.md.
 * Sims on these rules (60 duels, 32 bot games): Harvester vs Aggressive 25-26, 4-6 player median about 19 min, none unfinished, about half end by Hellgate.
 
 **Revision 4 (2026-10-03, evening) overrides revisions 2 and 3 where they differ:**

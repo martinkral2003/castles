@@ -103,12 +103,13 @@ setInterval(tutTick,400);
 $('#tut-skip').onclick=()=>{if(CAMP)CAMP.tut=false;$('#tut').hidden=true;};
 
 // ---------- network bootstrap ----------
+let RELAY=false;
 (async()=>{
   try{if(window.claude&&typeof claude.use==='function')ROOM=await claude.use('room');}catch(e){ROOM=null;}
-  if(ROOM){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Friends in your organization can join from this same page.';
+  if(!ROOM&&typeof MQROOM!=='undefined'&&MQROOM.ok){ROOM=MQROOM;RELAY=true;}
+  if(ROOM){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent=RELAY?'Online games run through a free public relay. Host a game and share the four-letter code.':'Friends in your organization can join from this same page.';
     ROOM.onPeers(renderGameList,()=>{});}
-  else if(P2P.ok){$('#b-host').disabled=false;$('#b-join').disabled=false;$('#net-note').textContent='Online play is peer to peer: the host sends each friend an invite code and gets a reply code back.';}
-  else $('#net-note').textContent='This browser cannot do peer-to-peer play. Bots are always ready.';
+  else $('#net-note').textContent='Online play needs a browser with WebSockets. Bots are always ready.';
 })();
 
 function leaveNet(){
@@ -129,16 +130,12 @@ function mkSlots(online){const s=[];for(let i=0;i<8;i++){
 function botName(i,d){const L=kv(()=>LORD_NAMES,null);return(L&&L.length?L[(L.length*8-1-i)%L.length]:'Bot '+(i+1))+' ('+DIFF[d]+')';}
 function slotLabel(s,i){return s.k==='b'?botName(i,s.d):(s.n||'Player');}
 
-$('#b-local').onclick=()=>{$('#p2p-host').hidden=true;leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
+$('#b-local').onclick=()=>{leaveNet();CAMP=null;DAILY=null;NET.mode='local';CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(false),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
   $('#setup-title').textContent='New game';$('#code-box').hidden=true;renderSetup();show('setup');};
 $('#b-host').onclick=async()=>{
-  if(!ROOM){if(!P2P.ok)return;leaveNet();NET.nr=P2P.host();NET.mode='host';NET.code='P2P';NET.lastSeq={};
-    CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(true),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
-    $('#setup-title').textContent='Online lobby';$('#code-box').hidden=true;$('#p2p-host').hidden=false;$('#p2p-list').innerHTML='';
-    NET.unsub.push(NET.nr.onPeers(onHostPeers,()=>{}));renderSetup();show('setup');pushState();return;}
-  $('#p2p-host').hidden=true;leaveNet();
+  if(!ROOM)return;leaveNet();
   const code=Array.from({length:4},()=>'ABCDEFGHJKMNPQRSTUVWXYZ'[Math.floor(Math.random()*23)]).join('');
-  try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){toastMenu('Could not open a game room. Try again.');return;}
+  try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){toastMenu('Could not reach the online relay. Check your connection and try again.');return;}
   NET.mode='host';NET.code=code;NET.lastSeq={};
   CFG={wonder:CFG?.wonder??1,souls:CFG?.souls??40,fog:CFG?.fog??1,neut:CFG?.neut??1,slots:mkSlots(true),ms:CFG?.ms??1,sp:CFG?.sp??1,mt:CFG?.mt??-1,gid:0};PHASE='lobby';
   $('#setup-title').textContent='Online lobby';$('#code').textContent=code;$('#code-box').hidden=false;
@@ -254,48 +251,20 @@ function renderGameList(){
     const row=document.createElement('div');row.className='game-row';row.appendChild(b);
     const w=document.createElement('button');w.className='watch';w.textContent='Watch';w.setAttribute('aria-label','Watch '+((clean(p.presence.n)||'this')+"'s game"));w.onclick=()=>joinCode(String(p.presence.h),true);row.appendChild(w);box.appendChild(row);}
 }
-$('#b-join').onclick=()=>{leaveNet();$('#join-msg').textContent='';$('#room-join').hidden=!ROOM;$('#p2p-join').hidden=!!ROOM||!P2P.ok;$('#p2p-ans').hidden=true;renderGameList();show('join');};
-// ---------- peer-to-peer invites (no ROOM): host side cards, client side connect ----------
-const copyText=async(t,btn)=>{try{await navigator.clipboard.writeText(t);if(btn){const o=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=o,1400);}}catch(e){toast('Select the code and copy it by hand.',2200);}};
-const shareText=async t=>{try{await navigator.share({text:t});}catch(e){}};
-$('#b-invite').onclick=async()=>{
-  const nr=NET.nr;if(NET.mode!=='host'||!nr||!nr.invite)return;const b=$('#b-invite');b.disabled=true;b.textContent='Preparing…';
-  let inv;try{inv=await nr.invite();}catch(e){toast('Could not make an invite. Try again.',2200);b.disabled=false;b.textContent='Create an invite code';return;}
-  b.disabled=false;b.textContent='Create another invite code';
-  const d=document.createElement('div');d.className='inv';
-  d.innerHTML='<b></b><small>1. Send this code to your friend</small><textarea readonly rows="3" aria-label="Invite code"></textarea><div class="duo"><button class="btn" data-copy>Copy</button><button class="btn" data-share hidden>Share</button></div><small>2. Paste the reply code they send back</small><textarea data-reply rows="3" placeholder="Reply code" aria-label="Reply code" spellcheck="false"></textarea><button class="btn primary" data-go>Connect</button><p class="msg" data-st></p>';
-  d.querySelector('b').textContent='Invite '+inv.n;const ta=d.querySelector('textarea');ta.value=inv.code;ta.onclick=()=>ta.select();
-  d.querySelector('[data-copy]').onclick=e=>copyText(inv.code,e.target);const sh=d.querySelector('[data-share]');if(navigator.share){sh.hidden=false;sh.onclick=()=>shareText(inv.code);}
-  const st=d.querySelector('[data-st]'),go=d.querySelector('[data-go]'),rp=d.querySelector('[data-reply]');
-  go.onclick=async()=>{st.textContent='Connecting…';try{await nr.accept(inv.id,rp.value);st.textContent='Waiting for the connection…';inv.pasted=Date.now();}catch(e){st.textContent='That reply code did not work.';}};
-  const t=setInterval(()=>{if(NET.nr!==nr||!d.isConnected){clearInterval(t);return;}if(!inv.isOpen()&&inv.pasted){const q=inv.state(),el=Math.round((Date.now()-inv.pasted)/1000);st.textContent=q==='failed'?'The connection failed. Make a new invite and try again; strict networks (some mobile data and office Wi-Fi) cannot connect directly, and the friend must keep their page open the whole time.':'Connecting… '+q+' ('+el+' s)'+(el>25?'. Still trying; if this stays on checking, the networks cannot reach each other.':'');}
-    if(inv.isOpen()){st.textContent='Connected ✓';go.hidden=true;rp.hidden=true;d.querySelector('.duo').hidden=true;ta.hidden=true;}},500);
-  $('#p2p-list').appendChild(d);};
-$('#b-p2p-copy').onclick=e=>copyText($('#p2p-out').value,e.target);
-if(navigator.share){$('#b-p2p-share').hidden=false;$('#b-p2p-share').onclick=()=>shareText($('#p2p-out').value);}
-$('#b-p2p-join').onclick=async()=>{
-  const msg=$('#join-msg'),text=$('#p2p-in').value;leaveNet();msg.textContent='Preparing your reply…';let r;
-  try{r=await P2P.join(text);}catch(e){msg.textContent='That invite code did not work.';return;}
-  const mine=r.nr;NET.nr=mine;NET.mode='client';NET.code='P2P';NET.seq=0;NET.cmds=[];NET.gid=null;NET.hadHost=false;G=null;PHASE='lobby';NET.spec=false;
-  $('#p2p-out').value=r.answer;$('#p2p-ans').hidden=false;msg.textContent='Send the reply code to the host, then wait here and keep this page open'+(/srflx|relay/.test(r.net)?'.':'. Warning: this network gave no internet address, so connecting is unlikely.');
-  const tq=setInterval(()=>{if(NET.nr!==mine||r.isOpen()){clearInterval(tq);return;}const q=r.state();if(q==='failed'){msg.textContent='The connection failed. Ask the host for a new invite; strict networks (some mobile data and office Wi-Fi) cannot connect directly.';clearInterval(tq);}else if(q!=='new')msg.textContent='Connecting… '+q;},700);
-  r.opened.then(()=>{if(NET.nr!==mine)return;mine.presence({r:'c',n:myName,c:[],spec:0}).catch(()=>{});NET.unsub.push(mine.onPeers(onClientPeers,()=>{}));
-    $('#wait-title').textContent='Online game';$('#wait-slots').innerHTML='';$('#wait-msg').textContent='Waiting for the host…';show('wait');
-    setTimeout(()=>{if(NET.nr===mine&&!NET.hadHost){leaveNet();show('join');msg.textContent='The host did not answer.';}},12000);});
-  setTimeout(()=>{if(NET.nr===mine&&!r.isOpen()){leaveNet();msg.textContent='Timed out waiting for the host to enter your reply.';}},240000);};
+$('#b-join').onclick=()=>{leaveNet();$('#join-msg').textContent='';renderGameList();show('join');};
 $('#b-code').onclick=()=>joinCode($('#code-in').value);
 $('#code-in').addEventListener('keydown',e=>{if(e.key==='Enter')joinCode(e.target.value);});
 async function joinCode(code,spec){
   code=String(code).toUpperCase().replace(/[^A-Z]/g,'');
   if(code.length!==4){$('#join-msg').textContent='Codes are four letters.';return;}
   leaveNet();$('#join-msg').textContent='Joining…';
-  try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){$('#join-msg').textContent='Could not join. Try again.';return;}
+  try{NET.nr=await ROOM.join('bf-'+code.toLowerCase());}catch(e){$('#join-msg').textContent='Could not reach the online relay. Check your connection and try again.';return;}
   NET.mode='client';NET.code=code;NET.seq=0;NET.cmds=[];NET.gid=null;NET.hadHost=false;G=null;PHASE='lobby';
   NET.spec=!!spec;NET.nr.presence({r:'c',n:myName,c:[],spec:spec?1:0}).catch(()=>{});
   NET.unsub.push(NET.nr.onPeers(onClientPeers,()=>{}));
   $('#wait-title').textContent=(spec?'Watching game ':'Game ')+code;$('#wait-slots').innerHTML='';$('#wait-msg').textContent='Looking for the host…';show('wait');
   const mine=NET.nr;
-  setTimeout(()=>{if(NET.nr===mine&&!NET.hadHost){leaveNet();show('join');$('#join-msg').textContent='No game found with code '+code+'.';}},7000);
+  setTimeout(()=>{if(NET.nr===mine&&!NET.hadHost){leaveNet();show('join');$('#join-msg').textContent='No game found with code '+code+'.';}},9000);
 }
 function onClientPeers({peers}){
   if(NET.mode!=='client')return;

@@ -73,11 +73,6 @@ button{cursor:pointer}
 .code-box b{font-family:var(--title);font-weight:700;font-size:2.1rem;letter-spacing:.16em;color:#ffd9a8;text-shadow:0 0 14px rgba(255,100,40,.45)}
 .code-box small{color:var(--muted);font-size:.92rem;flex-basis:100%;font-weight:500}
 .code-box[hidden]{display:none}
-#p2p-host[hidden],#p2p-join[hidden],#p2p-ans[hidden],#room-join[hidden]{display:none}
-#p2p-host,#p2p-join,#p2p-ans,#room-join{display:flex;flex-direction:column;gap:10px}
-textarea{width:100%;box-sizing:border-box;resize:none;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#171110;color:var(--ink);font:12px/1.35 ui-monospace,Consolas,monospace;word-break:break-all}
-.inv{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,#251b18,#1c1513)}
-.inv>b{font-family:var(--title);font-size:1.05rem;color:#ffd9a8}.inv small{color:var(--muted);font-weight:600}.inv .msg{min-height:0;text-align:left}
 .slots{display:flex;flex-direction:column;gap:8px}
 .slot{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;background:linear-gradient(180deg,#251b18,#1c1513);border:1px solid var(--line);border-radius:12px;padding:8px 10px;min-height:54px;box-shadow:inset 0 1px 0 rgba(255,214,180,.04)}
 .slot.off{opacity:.5}
@@ -214,12 +209,6 @@ select option{background:#1b1412;color:var(--ink)}
   <div class="bar"><button class="icon" data-back aria-label="Back">‹</button><h2 id="setup-title">New game</h2></div>
   <div class="wrap">
     <div class="code-box" id="code-box" hidden>Game code <b id="code"></b><small>Friends open this page, tap Join online, and pick your game.</small></div>
-    <div id="p2p-host" hidden>
-      <h3 class="sh">Invite players</h3>
-      <p class="note">Peer to peer, no server: make an invite code for each friend, send it to them, then paste the reply code they send back.</p>
-      <div id="p2p-list"></div>
-      <button class="btn" id="b-invite">Create an invite code</button>
-    </div>
     <h3 class="sh">Lords</h3>
     <div class="slots" id="slots"></div>
     <h3 class="sh">Battlefield</h3>
@@ -240,18 +229,8 @@ select option{background:#1b1412;color:var(--ink)}
 <section id="s-join" class="screen">
   <div class="bar"><button class="icon" data-back aria-label="Back">‹</button><h2>Join a game</h2></div>
   <div class="wrap">
-    <div id="room-join">    <div class="games" id="games"></div>
-    <div class="row"><input id="code-in" maxlength="4" placeholder="CODE" autocomplete="off" aria-label="Game code"><button class="btn primary" id="b-code">Join</button></div></div>
-    <div id="p2p-join" hidden>
-      <p class="note">Ask the host for an invite code, paste it here, then send the reply code back to the host.</p>
-      <textarea id="p2p-in" rows="4" placeholder="Paste the host's invite code" aria-label="Invite code" spellcheck="false"></textarea>
-      <button class="btn primary" id="b-p2p-join">Connect</button>
-      <div id="p2p-ans" hidden>
-        <p class="note">Your reply code. Send it to the host and wait on this screen.</p>
-        <textarea id="p2p-out" rows="4" readonly aria-label="Reply code"></textarea>
-        <div class="duo"><button class="btn" id="b-p2p-copy">Copy reply</button><button class="btn" id="b-p2p-share" hidden>Share</button></div>
-      </div>
-    </div>
+    <div class="games" id="games"></div>
+    <div class="row"><input id="code-in" maxlength="4" placeholder="CODE" autocomplete="off" aria-label="Game code"><button class="btn primary" id="b-code">Join</button></div>
     <p class="msg" id="join-msg"></p>
   </div>
 </section>
